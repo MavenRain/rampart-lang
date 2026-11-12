@@ -17,8 +17,8 @@ request, the route, the slices and the open questions. "design sec N" is
 section N of `design/DESIGN.md`. A reading that is not ruled stays a
 recommendation.
 
-Status: S0 (seed): the tcc-wasm kit and this plan. Next: S1 (the USER rules
-section 1.2).
+Status: S1 (rulings): the USER ruled sections 1.2 and 1.3 on 2026-11-12.
+Next: S2 (port the kernel, Q-S0-20).
 
 ## 1. Rulings and questions
 
@@ -34,6 +34,45 @@ section 1.2).
 | 2026-11-12 | x402 route: `langc serve`, an HTTP server in C that tcc builds. It links libcurl for the facilitator verify and settle calls and runs behind a TLS proxy. Same tools as `langc mcp`, plus MCP streamable HTTP at `/mcp`. The repo ships `server.json`, `openapi.yaml`, `llms.txt` and `funding.json`. Stated as the default in the question; the USER did not change it. | USER, S0 |
 | 2026-11-12 | Host: TinyCC. `langc`, `langc mcp`, `langc serve` and `rampartd` are C99 that TinyCC builds. | USER, S0 |
 | 2026-11-12 | Each deploy, each registry submission, each AgentFund campaign and the payTo wallet are USER steps. The repo holds no wallet address that Claude made up. | USER, S0 |
+| 2026-11-12 | Q-S0-1 (a): A failed check is a value of a sum type (`Verdict`, `Admit`, `Outcome`). A Rust panic site in a cited span is an explicit `Outcome` branch. A trace that reaches it is a FINDING in the T2 report, not a trap (pontoon 9ab466c:39). | USER, S1 |
+| 2026-11-12 | Q-S0-2 (a): The event trace is codata (`Stream Event`, the dual of the cell monad). Each modeled impl is a Mealy step `S -> Event -> S x Out`. The state is in a state cell monad. No other former. | USER, S1 |
+| 2026-11-12 | Q-S0-3 (a): The four-part rule of design sec 8: (i) inside the three paths, (ii) cites `path:start-end`, (iii) one example uses it, (iv) no admitted op is a composition of other admitted ops. A minimality table and a gate row in S21. "Minimal" is relative to the example corpus. It is not a theorem. | USER, S1 |
+| 2026-11-12 | Q-S0-4 (a): Opaque carriers with no op except the decidable equality that the span uses. Each cites its first use in the three paths. | USER, S1 |
+| 2026-11-12 | Q-S0-5 (a): The Swarm, tokio and the transport are the environment. Each async fn is atomic steps between the cited await points. A race below that grain is EXTERNAL (law X2). A bounded channel is a bounded queue value with a cited capacity. | USER, S1 |
+| 2026-11-12 | Q-S0-6 (a): It controls the event order, the bytes of up to `f` peers within the frame cap, and any number of fresh PeerIds under the span's admission rules. It cannot forge a signature or break a hash. `n` and `f < n/3` are in `Params`. | USER, S1 |
+| 2026-11-12 | Q-S0-7 (a): Logical time is the trace index. Each Rust `Duration` or `Instant` is a count of `Tick` events from a cited constant. No wall clock. | USER, S1 |
+| 2026-11-12 | Q-S0-8 (a): Each law is an inductive invariant over the Mealy step. Its proof is a core term that the kernel checks. Evaluation decides closed goals. A later slice (S11) adds a linear integer arithmetic procedure that emits a core certificate, which the kernel checks again. No trusted oracle. The USER saw the FOR USER ATTENTION note in the question. | USER, S1 |
+| 2026-11-12 | Q-S0-9 (a): Integers only. `u64` and `usize` are bounded naturals. Each `saturating_*` and `checked_*` op maps to one total op (gavel 86c2f30). The `f64` of `peers/score.rs` is a fixed-point integer at a cited scale, rounded against the property under proof. The gap to IEEE `f64` is EXTERNAL (law X1). | USER, S1 |
+| 2026-11-12 | Q-S0-10 (a): The memory measure stays at or below a cap that depends only on `Params`, for each trace. | USER, S1 |
+| 2026-11-12 | Q-S0-11 (b): The same, and liveness (an honest request is served within `k` steps) in v1. "The same" is the text of (a) up to "committee peers". Law X4 leaves EXTERNAL; section 1.3 gives its form (law D3). Edits: PLAN sections 1.3, 6, 12, 14 (S8), 15 (OI-13); design secs 2.2, 4, 10. | USER, S1 |
+| 2026-11-12 | Q-S0-12 (a): The role lattice comes from the span (for example `unknown < known < committee < trusted < self`). Non-interference on the high projection. | USER, S1 |
+| 2026-11-12 | Q-S0-13 (a): Resource arbitrage (no positive cycle in a scored resource) and information arbitrage (a bound on the gossip lead for a batch or a certificate). The USER saw the FOR USER ATTENTION note in the question. | USER, S1 |
+| 2026-11-12 | Q-S0-14 (a): Eclipse, ban evasion, stale or replayed records. | USER, S1 |
+| 2026-11-12 | Q-S0-15 (a): The draft table of section 13 is the starting list for S6. S6 confirms each span. | USER, S1 |
+| 2026-11-12 | Q-S0-16 (a): One row per name with the sha256 of the exact line range. `langc pins verify` prints SAME or CHANGED. The gate row prints `pins: SKIPPED (no RAMPART_TN)` when it cannot run. `langc pins bump NEWSHA` finds each item again by name. | USER, S1 |
+| 2026-11-12 | Q-S0-17 (a): One schema, with a version. It is also the property section of `check --json`. | USER, S1 |
+| 2026-11-12 | Q-S0-18 (a): A line-based text format in `test/traces/`, one event per line, that `rampartd` reads. | USER, S1 |
+| 2026-11-12 | Q-S0-19 (a): The draft in `README.md`. | USER, S1 |
+| 2026-11-12 | Q-S0-20 (a): pontoon-lang a82331d: the Cubical TT kernel and the total Wasm writer, a port of barter-lang df78228 and a8f0f52 (pontoon 9ab466c:64). | USER, S1 |
+| 2026-11-12 | Q-S0-21 (a): Its own C99 Wasm interpreter; node and wasmtime are oracles in the gate (pontoon 9ab466c:65). | USER, S1 |
+| 2026-11-12 | Q-S0-22 (a): S3 changes it: R0 makes a trap a failure on each target (pontoon 9ab466c:80; barter a8f0f52). | USER, S1 |
+| 2026-11-12 | Q-S0-23 (a): The four buckets; `laws_discharged` counts DISCHARGED rows only (pontoon 9ab466c:78). | USER, S1 |
+| 2026-11-12 | Q-S0-24 (a): The ten codes of section 7. | USER, S1 |
+| 2026-11-12 | Q-S0-25 (a): JSON POST routes for the tools and MCP streamable HTTP at `/mcp`, each behind x402 (pontoon 9ab466c:67). | USER, S1 |
+| 2026-11-12 | Q-S0-26 (a): Four: check a property (with its T2 report), explain a refusal, list the base span with citations, report span drift against a newer telcoin-network SHA. | USER, S1 |
+| 2026-11-12 | Q-S0-27 (a): Tiered: $0.01 for fmt, explain, list-base, show-law and show-span; $0.05 for a property check with its T2 report; $0.20 for a drift report (pontoon 9ab466c:68 shape). | USER, S1 |
+| 2026-11-12 | Q-S0-28 (a): USDC on Base mainnet; base-sepolia in tests (pontoon 9ab466c:69). | USER, S1 |
+| 2026-11-12 | Q-S0-29 (a): A `packages` entry and a `remotes` entry, name `io.github.MavenRain/rampart-lang` (pontoon 9ab466c:70). | USER, S1 |
+| 2026-11-12 | Q-S0-30 (a): OpenAPI 3.1; each route lists its 402 response with the x402 body schema and the price (pontoon 9ab466c:71). | USER, S1 |
+| 2026-11-12 | Q-S0-31 (a): `.github/FUNDING.yml`, `funding.json`, `llms.txt`; no `.well-known/ai-donate.json` (pontoon 9ab466c:72). | USER, S1 |
+| 2026-11-12 | Q-S0-32 (a): `langc serve` writes a local count log; nothing leaves the host (pontoon 9ab466c:73). | USER, S1 |
+| 2026-11-12 | Q-S0-33 (a): This plan lists candidate milestones only; the USER runs any campaign (pontoon 9ab466c:74). | USER, S1 |
+| 2026-11-12 | Q-S0-34 (a): The README gets the section "What an agent gets" in ROI terms (pontoon 9ab466c:75). | USER, S1 |
+| 2026-11-12 | Q-S0-35 (a): A local C stub facilitator and a public test-network row in the gate; the gate fails when the network or a test input is absent (pontoon 9ab466c:76). | USER, S1 |
+| 2026-11-12 | Q-S0-36 (a): count_tokens on programs with equal outputs (pontoon 9ab466c:77). | USER, S1 |
+| 2026-11-12 | Q-S1-1 (a): X4 becomes law D3 in DISCHARGED: in each trace that meets the premise of Q-S1-2, an admitted request from an honest peer (scope Q-S1-3) gets its response or an explicit refusal Outcome within k step events; k depends only on Params. Kernel-checked inductive invariant, S11 LIA certificate. Counts: DISCHARGED 9 to 10, EXTERNAL 4 to 3. Law D3 names the bound `t`. Edits: PLAN sections 1.3, 6, 12, 14 (S8), 15 (OI-13); design secs 2.2, 4, 10. | USER, S1 |
+| 2026-11-12 | Q-S1-2 (b): Same window premise inside the D3 statement, but no ASSUMED row: the scheduler gap joins law X3 (transport and runtime internals, EXTERNAL). ASSUMED stays 2. The window premise (from (a)): in each window of `w` events (`w` in `Params`), the environment delivers a step to each ready handler; the adversary keeps all other order control. | USER, S1 |
+| 2026-11-12 | Q-S1-3 (a): Only requests from honest committee peers, which have reserved capacity under law D2. Unknown and known non-committee peers have no liveness claim in v1. | USER, S1 |
 
 The seed is `bin/new-lang.sh rampart-lang tcc-wasm` from lang-template
 5265a2a. The kit gives the parser, the checker, the evaluator, the lowering
@@ -44,6 +83,9 @@ Carried default, not ruled for rampart-lang: proofs are guest-language
 terms only (quorum-lang ruling, 2026-10-25). Lean export is not a target.
 
 ### 1.2 Questions for the USER (S0)
+
+S1 ruled each item on 2026-11-12. Section 1.1 has one row per
+ruling.
 
 Option (a) is the recommendation. Where a pontoon-lang S1 ruling answers
 the same question, option (a) is that ruling, cited as `pontoon
@@ -57,34 +99,41 @@ Readings of the request:
   a cited span is an explicit `Outcome` branch. A trace that reaches it is
   a FINDING in the T2 report, not a trap (pontoon 9ab466c:39). (b) Leave
   panic sites out of the model, and refuse a span that has one.
+  RULED: (a).
 - Q-S0-2 R1 formers (section 3, design sec 3). (a) The event trace is
   codata (`Stream Event`, the dual of the cell monad). Each modeled impl is
   a Mealy step `S -> Event -> S x Out`. The state is in a state cell monad.
   No other former. (b) A list trace (finite traces only) and no codata.
+  RULED: (a).
 - Q-S0-3 R2 minimal span (section 4, design sec 8). (a) The four-part rule
   of design sec 8: (i) inside the three paths, (ii) cites `path:start-end`,
   (iii) one example uses it, (iv) no admitted op is a composition of other
   admitted ops. A minimality table and a gate row in S21. "Minimal" is
   relative to the example corpus. It is not a theorem. (b) The one-way
   rule only: (i) to (iii).
+  RULED: (a).
 - Q-S0-4 Foreign types (design sec 8). (a) Opaque carriers with no op
   except the decidable equality that the span uses. Each cites its first
   use in the three paths. (b) Refused: refuse each item whose signature
   names a foreign type. Nearly every handler takes a `PeerId`. (c) Admit
   foreign types with their own ops. This breaks "only".
+  RULED: (a).
 - Q-S0-5 Async and the Swarm (design sec 2.1). (a) The Swarm, tokio and the
   transport are the environment. Each async fn is atomic steps between the
   cited await points. A race below that grain is EXTERNAL (law X2). A
   bounded channel is a bounded queue value with a cited capacity. (b)
   Refused in v1: model interleavings inside a step.
+  RULED: (a).
 - Q-S0-6 Adversary (design sec 2.2). (a) It controls the event order, the
   bytes of up to `f` peers within the frame cap, and any number of fresh
   PeerIds under the span's admission rules. It cannot forge a signature or
   break a hash. `n` and `f < n/3` are in `Params`. (b) A variant that the
   USER names.
+  RULED: (a).
 - Q-S0-7 Time (section 5). (a) Logical time is the trace index. Each Rust
   `Duration` or `Instant` is a count of `Tick` events from a cited
   constant. No wall clock. (b) A clock value in each event.
+  RULED: (a).
 - Q-S0-8 Law discharge. FOR USER ATTENTION. A property over all traces
   needs induction. (a) Each law is an inductive invariant over the Mealy
   step. Its proof is a core term that the kernel checks. Evaluation decides
@@ -93,51 +142,63 @@ Readings of the request:
   No trusted oracle. (b) A trusted Presburger oracle in C. Its laws go to
   ASSUMED. (c) Refused as the main mode: bounded checking to depth `k`. It
   stays as a counterexample search that feeds T2.
+  RULED: (a).
 - Q-S0-9 Numbers (design sec 6.2). (a) Integers only. `u64` and `usize`
   are bounded naturals. Each `saturating_*` and `checked_*` op maps to one
   total op (gavel 86c2f30). The `f64` of `peers/score.rs` is a fixed-point
   integer at a cited scale, rounded against the property under proof. The
   gap to IEEE `f64` is EXTERNAL (law X1). (b) Refused: exact rationals (no
   static size bound). (c) Refused: model `f64` (R0 and exactness).
+  RULED: (a).
 
 The attack classes (design sec 4):
 
 - Q-S0-10 OOM (law O1). (a) The memory measure stays at or below a cap
   that depends only on `Params`, for each trace. (b) A cap per structure
   only, with no total.
+  RULED: (a).
 - Q-S0-11 DoS (laws D1, D2). (a) Amplification `work <= a * attacker bytes
   + b`, per peer and in total, and reserved capacity for committee peers.
   Liveness is not in v1 (law X4, EXTERNAL). (b) The same, and liveness (an
   honest request is served within `k` steps) in v1.
+  RULED: (b). Section 1.3 gives the form of the liveness law.
 - Q-S0-12 Privilege escalation (law P1). (a) The role lattice comes from
   the span (for example `unknown < known < committee < trusted < self`).
   Non-interference on the high projection. (b) A lattice that the USER
   names.
+  RULED: (a).
 - Q-S0-13 Arbitrage (laws A1, A2). FOR USER ATTENTION: the least settled
   class. (a) Resource arbitrage (no positive cycle in a scored resource)
   and information arbitrage (a bound on the gossip lead for a batch or a
   certificate). (b) Resource arbitrage only in v1. (c) A reading that the
   USER names.
+  RULED: (a).
 - Q-S0-14 Similar attacks, v1 set (laws E1, E2, E3). (a) Eclipse, ban
   evasion, stale or replayed records. (b) The four named classes only.
+  RULED: (a).
 
 The base and its pins:
 
 - Q-S0-15 Base draft (section 13). (a) The draft table of section 13 is
   the starting list for S6. S6 confirms each span. (b) A smaller list that
   the USER names.
+  RULED: (a).
 - Q-S0-16 Span pins (design sec 7). (a) One row per name with the sha256
   of the exact line range. `langc pins verify` prints SAME or CHANGED. The
   gate row prints `pins: SKIPPED (no RAMPART_TN)` when it cannot run.
   `langc pins bump NEWSHA` finds each item again by name. (b) Hash whole
   files. Any upstream edit then fails the gate.
+  RULED: (a).
 - Q-S0-17 T2 report (design sec 7). (a) One schema, with a version. It is
   also the property section of `check --json`. (b) Two schemas.
+  RULED: (a).
 - Q-S0-18 Trace format (S14). (a) A line-based text format in
   `test/traces/`, one event per line, that `rampartd` reads. (b) JSON
   lines.
+  RULED: (a).
 - Q-S0-19 When-to table (README draft). (a) The draft in `README.md`. (b)
   A narrower scope that the USER names.
+  RULED: (a).
 
 The route:
 
@@ -145,51 +206,99 @@ The route:
   Cubical TT kernel and the total Wasm writer, a port of barter-lang
   df78228 and a8f0f52 (pontoon 9ab466c:64). (b) barter-lang a8f0f52
   directly.
+  RULED: (a).
 - Q-S0-21 `rampartd` (section 8.3). (a) Its own C99 Wasm interpreter; node
   and wasmtime are oracles in the gate (pontoon 9ab466c:65). (b) Link a
   Wasm runtime library.
+  RULED: (a).
 - Q-S0-22 The kit row "a trap is equal to a trap" (section 2). (a) S3
   changes it: R0 makes a trap a failure on each target (pontoon
   9ab466c:80; barter a8f0f52). (b) Keep the row until S13 (T1).
+  RULED: (a).
 - Q-S0-23 Law buckets (section 6). (a) The four buckets; `laws_discharged`
   counts DISCHARGED rows only (pontoon 9ab466c:78). (b) Three buckets.
+  RULED: (a).
 - Q-S0-24 Refusal codes (section 7). (a) The ten codes of section 7. (b)
   One generic code with a text.
+  RULED: (a).
 
 Agent adoption and x402 (section 9; option (a) ports pontoon 9ab466c):
 
 - Q-S0-25 `langc serve` routes. (a) JSON POST routes for the tools and MCP
   streamable HTTP at `/mcp`, each behind x402 (pontoon 9ab466c:67). (b)
   `/mcp` only.
+  RULED: (a).
 - Q-S0-26 Paid tools. (a) Four: check a property (with its T2 report),
   explain a refusal, list the base span with citations, report span drift
   against a newer telcoin-network SHA. (b) The first three only. The drift
   tool needs a telcoin-network checkout on the server (OI-7).
+  RULED: (a).
 - Q-S0-27 Prices. (a) Tiered: $0.01 for fmt, explain, list-base,
   show-law and show-span; $0.05 for a property check with its T2 report;
   $0.20 for a drift report (pontoon 9ab466c:68 shape). (b) $0.01 flat.
+  RULED: (a).
 - Q-S0-28 Payment network. (a) USDC on Base mainnet; base-sepolia in tests
   (pontoon 9ab466c:69). (b) A network that the USER names.
+  RULED: (a).
 - Q-S0-29 `server.json`. (a) A `packages` entry and a `remotes` entry,
   name `io.github.MavenRain/rampart-lang` (pontoon 9ab466c:70). (b)
   `packages` only.
+  RULED: (a).
 - Q-S0-30 `openapi.yaml`. (a) OpenAPI 3.1; each route lists its 402
   response with the x402 body schema and the price (pontoon 9ab466c:71).
   (b) OpenAPI 3.0.
+  RULED: (a).
 - Q-S0-31 Funding files. (a) `.github/FUNDING.yml`, `funding.json`,
   `llms.txt`; no `.well-known/ai-donate.json` (pontoon 9ab466c:72). (b)
   Also `.well-known/ai-donate.json`.
+  RULED: (a).
 - Q-S0-32 Measurement. (a) `langc serve` writes a local count log; nothing
   leaves the host (pontoon 9ab466c:73). (b) No count log.
+  RULED: (a).
 - Q-S0-33 AgentFund. (a) This plan lists candidate milestones only; the
   USER runs any campaign (pontoon 9ab466c:74). (b) No milestones.
+  RULED: (a).
 - Q-S0-34 Agent framing. (a) The README gets the section "What an agent
   gets" in ROI terms (pontoon 9ab466c:75). (b) No such section.
+  RULED: (a).
 - Q-S0-35 x402 test network. (a) A local C stub facilitator and a public
   test-network row in the gate; the gate fails when the network or a test
   input is absent (pontoon 9ab466c:76). (b) The local stub only.
+  RULED: (a).
 - Q-S0-36 Token comparison. (a) count_tokens on programs with equal
   outputs (pontoon 9ab466c:77). (b) A word count.
+  RULED: (a).
+
+### 1.3 Questions for the USER (S1)
+
+Q-S0-11 (b) puts liveness in v1. These items give the form of the
+liveness law. The bound `k` of Q-S0-11 (b) is `t` in law D3, because
+law D2 uses `k`.
+
+- Q-S1-1 Liveness form and bucket (raised by Q-S0-11 (b); law X4 leaves
+  EXTERNAL). A bounded response is a safety property over finite prefixes,
+  so the Q-S0-8 (a) induction can prove it. (a) X4 becomes law D3 in
+  DISCHARGED: in each trace that meets the premise of Q-S1-2, an admitted
+  request from an honest peer (scope Q-S1-3) gets its response or an
+  explicit refusal `Outcome` within `t` step events; `t` depends only on
+  `Params`. (b) The same statement AT TARGET: `rampartd` replays the trace
+  corpus and checks the bound, with no proof.
+  RULED: (a).
+- Q-S1-2 Fairness premise. Under Q-S0-6 (a) the adversary controls the event
+  order, so a schedule that never runs the handler breaks any liveness law.
+  (a) D3 holds for traces where, in each window of `w` events (`w` in
+  `Params`), the environment delivers a step to each ready handler; the
+  adversary keeps all other order control. That the tokio runtime meets this
+  premise is a stated law F1 in ASSUMED. (b) The same window premise inside
+  the D3 statement, but no ASSUMED row: the scheduler gap joins law X3
+  (EXTERNAL).
+  RULED: (b).
+- Q-S1-3 Scope of "honest request". The adversary can make any number of
+  fresh PeerIds (Q-S0-6 (a)), so it can fill capacity that unknown peers
+  share. (a) Only requests from honest committee peers, which have reserved
+  capacity under law D2. (b) Requests from each honest peer, unknown peers
+  too; the checker will likely find a counterexample.
+  RULED: (a).
 
 ## 2. The reading of R0: no runtime error
 
@@ -240,13 +349,14 @@ The laws are design sec 4. Buckets (Q-S0-23):
 
 | Bucket | Laws | Count |
 |---|---|---|
-| DISCHARGED (the checker proves it) | O1, D1, D2, P1, A1, A2, E1, E2, E3 | 9 |
+| DISCHARGED (the checker proves it) | O1, D1, D2, D3, P1, A1, A2, E1, E2, E3 | 10 |
 | ASSUMED (a crypto assumption, stated) | S1 (signature unforgeability), H1 (hash collision resistance) | 2 |
 | AT TARGET (the target shows it; differential tests) | C1 (the Wasm module agrees with `langc eval` on the trace corpus), C2 (the T2 report agrees with `check --json`) | 2 |
-| EXTERNAL (outside langc) | X1 (the gap from fixed point to IEEE `f64`), X2 (races below the await grain), X3 (the transport and libp2p internals), X4 (liveness, if Q-S0-11 (a)) | 4 |
+| EXTERNAL (outside langc) | X1 (the gap from fixed point to IEEE `f64`), X2 (races below the await grain), X3 (the transport, the libp2p internals and the runtime scheduler, also that the scheduler meets the window premise of law D3) | 3 |
 
-With Q-S0-13 (b), law A2 leaves v1 and DISCHARGED counts 8. With Q-S0-14
-(b), laws E1 to E3 leave v1.
+Q-S0-13 (a) keeps law A2 and Q-S0-14 (a) keeps laws E1 to E3 in v1.
+Q-S0-11 (b) puts liveness in v1: law X4 is now law D3 in DISCHARGED, a
+bounded response (section 1.3, design sec 4). There is no law X4.
 
 ## 7. Refusals
 
@@ -374,7 +484,7 @@ layer. Six siblings name Telcoin Network for another reason:
 |---|---|---|
 | E1 | `oom-bound`: queues, caches, pending maps, peer tables and kad records stay under a `Params` cap | O1 |
 | E2 | `dos-amplify`: honest work is at most `a * attacker bytes + b` | D1 |
-| E3 | `reserved-slots`: committee peers keep `k` slots or permits under a flood | D2 |
+| E3 | `reserved-slots`: committee peers keep `k` slots or permits under a flood | D2, D3 |
 | E4 | `privesc-role`: no event at role `r` changes state above `r` | P1 |
 | E5 | `arbitrage-cycle`: no attacker cycle gains score, permits, slots or retention priority | A1 |
 | E6 | `gossip-lead`: a bound on the lead to a batch or a certificate | A2 |
@@ -442,14 +552,14 @@ constants in the three paths (OI-12). The longest span is 94 lines
 | Slice | Work | State |
 |---|---|---|
 | S0 | Seed from the kit, design, this plan, README and AGENTS drafts | DONE |
-| S1 | The USER rules section 1.2 | NEXT |
-| S2 | Port the kernel and the total Wasm writer (Q-S0-20) | |
+| S1 | The USER rules section 1.2 | DONE |
+| S2 | Port the kernel and the total Wasm writer (Q-S0-20) | NEXT |
 | S3 | Total arithmetic, bounded naturals, fixed point; the trap row (Q-S0-9, Q-S0-22) | |
 | S4 | R1 formers: `Stream` codata, the state cell monad, the Mealy step (Q-S0-2) | |
 | S5 | Span pins: `pins/spans.tsv`, `langc pins verify`, `langc pins bump`, the gate row (Q-S0-16) | |
 | S6 | Base carriers, `Params` and cited constants; confirm the section 13 spans (Q-S0-4, Q-S0-15) | |
 | S7 | Peers: score, penalty, bans, the peer table; laws A1, E1, E2, P1 | |
-| S8 | Admission and permits: admission, source admission, serve permits, service class, sync admission; laws D1, D2 | |
+| S8 | Admission and permits: admission, source admission, serve permits, service class, sync admission; laws D1, D2, D3 | |
 | S9 | Records: kad, freshness, record exchange, retention; law E3, O1 (records) | |
 | S10 | Primary and worker network handlers and codecs; laws O1 (queues), D1 (codecs), A2 | |
 | S11 | Law discharge: trace induction, linear integer arithmetic with certificates (Q-S0-8) | |
@@ -471,7 +581,8 @@ constants in the three paths (OI-12). The longest span is 94 lines
   Check them against the x402 text in S17. Do not guess.
 - OI-2 The `server.json` schema of the MCP Registry. Check it in S18.
 - OI-3 The `funding.json` schema. Check it in S18.
-- OI-4 The kit row "a trap is equal to a trap" (Q-S0-22).
+- OI-4 The kit row "a trap is equal to a trap". Q-S0-22 (a): S3 changes
+  it.
 - OI-5 The facilitator URL and the payTo address are USER inputs. No
   default address in the repo.
 - OI-6 `doc-check.pl` was not run at S0 (pontoon S0 precedent).
@@ -490,3 +601,7 @@ constants in the three paths (OI-12). The longest span is 94 lines
 - OI-12 Ban durations and the excess-peer reconnection timeout come from
   config, not from constants in the three paths. S6 decides how `Params`
   carries them, with a citation to the config field.
+- OI-13 The window `w` and the response bound `t` of law D3 (section 1.3).
+  S8 reads them from the cited capacities (reserved slots, queue capacities,
+  permits) and puts them in `Params`. If the span gives no bound, it is a
+  question for S8.

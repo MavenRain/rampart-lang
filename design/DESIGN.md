@@ -53,6 +53,10 @@ queue value. Its capacity is a cited constant.
 - It cannot forge a BLS or an ed25519 signature (law S1, ASSUMED). It cannot
   find a hash collision (law H1, ASSUMED).
 - `Params` holds the committee size `n`, with `f < n/3`.
+- For law D3 only, the event order meets a window premise: in each window
+  of `w` events, each ready handler gets a step (Q-S1-2 (b)). The
+  adversary keeps all other order control. `Params` holds `w` and the
+  response bound `t` of law D3.
 
 ### 2.3 Time (Q-S0-7)
 
@@ -84,6 +88,7 @@ mechanism that it checks.
 | OOM | O1 | For each trace, the memory measure stays at or below a cap. The measure counts bytes held in queues, caches, pending-request maps, peer tables and kad records. The cap depends only on `Params` (cited limits). It never depends on the trace length or on the attacker volume. |
 | DoS, amplification | D1 | Honest work units (bytes sent, decode steps, store reads) are at most `a * attacker bytes + b`, per peer and in total. |
 | DoS, reserved capacity | D2 | Committee peers keep `k` inbound slots or permits under any flood. |
+| DoS, bounded response | D3 | In each trace that meets the window premise of sec 2.2, a request from an honest committee peer that the span admits gets its response or an explicit refusal `Outcome` within `t` step events. `t` and `w` depend only on `Params`. The premise is part of the law. That the runtime scheduler meets it is EXTERNAL (law X3). Q-S0-11 (b), Q-S1-1 to Q-S1-3. |
 | Privilege escalation | P1 | A role lattice comes from the span, for example `unknown < known < committee < trusted < self`. No event from a peer at role `r` changes state that the span reserves for a role above `r` (non-interference on the high projection). This covers ban lifting, score reset, slot reservation and gossip topic authority. |
 | Arbitrage, resource | A1 | No cycle of attacker actions gives a net gain in a scored resource (peer score, permits, slots, bandwidth credit, retention priority) at no net cost. This is the no-positive-cycle rule of exchange rates. |
 | Arbitrage, information | A2 | The lead (in trace steps) that one peer gets over another, when it learns a batch or a certificate by gossip fan-out, has a bound. FOR USER ATTENTION (Q-S0-13). |
@@ -91,8 +96,11 @@ mechanism that it checks.
 | Ban evasion | E2 | A fresh PeerId after a ban gets no more than the budget of a new peer. |
 | Stale or replayed records | E3 | A record outside the freshness window, or a replayed record, is a `reject`, never a state change (`freshness.rs`, `kad.rs`, `record_exchange.rs`). |
 
-Liveness (an honest request is served within `k` steps) is not in v1 under
-Q-S0-11 (a). It is EXTERNAL (law X4) until a later ruling.
+Liveness is in v1 as law D3, a bounded response (Q-S0-11 (b), Q-S1-1
+(a)). A bound in steps is a safety property over finite prefixes, so the
+induction of section 6.1 proves it. D3 covers honest committee peers
+only (Q-S1-3 (a)). The window premise is in the law, not in ASSUMED
+(Q-S1-2 (b)). There is no law X4.
 
 ## 5. No runtime error (R0, Q-S0-1)
 
@@ -182,7 +190,7 @@ TinyCC builds each one. Keep them separate.
 - Crypto soundness (laws S1, H1 are ASSUMED).
 - A working exploit. No Rust PoC target was chosen.
 - Races below the await grain (law X2).
-- Liveness, under Q-S0-11 (a) (law X4).
+- Liveness for a peer that is not a committee peer (Q-S1-3 (a)).
 - Rust PoC export, Lean 4 export and SMT-LIB 2 export (not chosen).
 
 ## 11. The request (USER, 2026-11-12, verbatim)
