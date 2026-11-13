@@ -73,7 +73,9 @@ from a cited constant. The language has no wall clock.
   the cell monad. The sibling source is leaf-lang (codata `Stream`, sealed
   codata, coinduction).
 - Each modeled impl is a Mealy step `S -> Event -> S x Out`, a coalgebra.
-- The state is carried in a state cell monad.
+- The state is carried in a state cell monad. `St S A := S -> Prod S A`
+  and the step `Mealy S E O` are defs in `domain/domain.lang`, not kernel
+  formers (Q-S4-1 (a)).
 - `Verdict`, `Admit` and `Outcome` are sum types, not formers.
 - A former outside this table gives `REFUSE_FORMER`.
 

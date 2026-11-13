@@ -1,0 +1,3 @@
+-- A stream def that names itself. The only stream introduction is sCorec,
+-- and a def cannot recurse, so the checker refuses it.
+def ones : Stream Size := sCorec Size (Stream Size) (fun (x : Stream Size) => szS sz0) (fun (x : Stream Size) => x) ones

@@ -58,6 +58,87 @@ def sExtend : (A : Type 0) -> (B : Type 0) -> (Stream A -> B) -> Stream A -> Str
   fun (A : Type 0) => fun (B : Type 0) => fun (f : Stream A -> B) => sCorec B (Stream A) f (sTail A)
 def sDuplicate : (A : Type 0) -> Stream A -> Stream (Stream A) :=
   fun (A : Type 0) => sExtend A (Stream A) (fun (x : Stream A) => x)
+-- The state cell monad (S4, Q-S0-2 (a), Q-S4-1 (a)). The defs are Kleisli
+-- defs over Prod. The kernel does not change. St S A takes a state and
+-- gives the next state and a value.
+def St : Type 0 -> Type 0 -> Type 0 :=
+  fun (S : Type 0) (A : Type 0) => S -> Prod S A
+def stPure : (S : Type 0) -> (A : Type 0) -> A -> St S A :=
+  fun (S : Type 0) (A : Type 0) (a : A) => fun (s : S) => pair s a
+def stBind : (S : Type 0) -> (A : Type 0) -> (B : Type 0) -> St S A -> (A -> St S B) -> St S B :=
+  fun (S : Type 0) (A : Type 0) (B : Type 0) (m : St S A) (k : A -> St S B) =>
+    fun (s : S) => (fun (p : Prod S A) => k (second p) (first p)) (m s)
+def stGet : (S : Type 0) -> St S S :=
+  fun (S : Type 0) => fun (s : S) => pair s s
+def stPut : (S : Type 0) -> S -> St S Unit :=
+  fun (S : Type 0) (t : S) => fun (s : S) => pair t unit
+-- stBind binds m s one time with a beta redex. The evaluator gives the
+-- argument a value before the body runs, so the state action runs one
+-- time at each bind. The monad laws hold by conversion. The right unit law
+-- uses product eta and function eta.
+def stLawUnitL : (S : Type 0) -> (A : Type 0) -> (B : Type 0) -> (a : A) -> (k : A -> St S B) ->
+    Path (St S B) (stBind S A B (stPure S A a) k) (k a) :=
+  fun (S : Type 0) (A : Type 0) (B : Type 0) (a : A) (k : A -> St S B) => refl
+def stLawUnitR : (S : Type 0) -> (A : Type 0) -> (m : St S A) -> Path (St S A) (stBind S A A m (stPure S A)) m :=
+  fun (S : Type 0) (A : Type 0) (m : St S A) => refl
+def stLawAssoc : (S : Type 0) -> (A : Type 0) -> (B : Type 0) -> (C : Type 0) -> (m : St S A) -> (k : A -> St S B) -> (h : B -> St S C) ->
+    Path (St S C) (stBind S B C (stBind S A B m k) h) (stBind S A C m (fun (a : A) => stBind S B C (k a) h)) :=
+  fun (S : Type 0) (A : Type 0) (B : Type 0) (C : Type 0) (m : St S A) (k : A -> St S B) (h : B -> St S C) => refl
+-- The Mealy step (S4, Q-S0-2 (a)). A step takes a state and an event and
+-- gives the next state and an output. At one event, the step is a state
+-- action (mealyKleisli).
+def Mealy : Type 0 -> Type 0 -> Type 0 -> Type 0 :=
+  fun (S : Type 0) (E : Type 0) (O : Type 0) => S -> E -> Prod S O
+def mealyKleisli : (S : Type 0) -> (E : Type 0) -> (O : Type 0) -> Mealy S E O -> E -> St S O :=
+  fun (S : Type 0) (E : Type 0) (O : Type 0) (step : Mealy S E O) (e : E) => fun (s : S) => step s e
+-- The run of a step over an event trace is the corecursor at the seed
+-- Prod S (Stream E). The head is the output at the first event. The next
+-- seed is the next state and the tail of the trace. Time is the trace
+-- index (Q-S0-7 (a)). The head and the next seed each apply the step one
+-- time, so the cost is two steps for each event. The cost does not grow
+-- with the index.
+def mealyRun : (S : Type 0) -> (E : Type 0) -> (O : Type 0) -> Mealy S E O -> S -> Stream E -> Stream O :=
+  fun (S : Type 0) (E : Type 0) (O : Type 0) (step : Mealy S E O) (s0 : S) (es : Stream E) =>
+    sCorec O (Prod S (Stream E))
+      (fun (q : Prod S (Stream E)) => second (step (first q) (sHead E (second q))))
+      (fun (q : Prod S (Stream E)) => pair (first (step (first q) (sHead E (second q)))) (sTail E (second q)))
+      (pair s0 es)
+-- sNth A n x is the observation of x at the index n.
+def sNth : (A : Type 0) -> Size -> Stream A -> A :=
+  fun (A : Type 0) (n : Size) =>
+    elim (fun (k : Size) => Stream A -> A) (fun (x : Stream A) => sHead A x)
+      (fun (k : Size) (ih : Stream A -> A) => fun (x : Stream A) => ih (sTail A x)) n
+-- mealyFrom step n s es is the state after the first n events of es from
+-- the state s. mealyFrom takes n first, so the elim motive can quantify
+-- the state and the trace (the state changes at each step). mealyAfter
+-- puts the start state first, as the statement of mealyInv does
+-- (Q-S0-8 (a)).
+def mealyFrom : (S : Type 0) -> (E : Type 0) -> (O : Type 0) -> Mealy S E O -> Size -> S -> Stream E -> S :=
+  fun (S : Type 0) (E : Type 0) (O : Type 0) (step : Mealy S E O) (n : Size) =>
+    elim (fun (k : Size) => S -> Stream E -> S) (fun (s : S) (xs : Stream E) => s)
+      (fun (k : Size) (ih : S -> Stream E -> S) => fun (s : S) (xs : Stream E) => ih (first (step s (sHead E xs))) (sTail E xs)) n
+def mealyAfter : (S : Type 0) -> (E : Type 0) -> (O : Type 0) -> Mealy S E O -> S -> Size -> Stream E -> S :=
+  fun (S : Type 0) (E : Type 0) (O : Type 0) (step : Mealy S E O) (s0 : S) (n : Size) (es : Stream E) =>
+    mealyFrom S E O step n s0 es
+-- The invariant principle (Q-S0-8 (a)): when the step keeps P, P holds
+-- after each number of events. The proof is induction on Size.
+-- mealyInvFrom is the induction. Its motive quantifies the state and the
+-- trace.
+def mealyInvFrom : (S : Type 0) -> (E : Type 0) -> (O : Type 0) -> (step : Mealy S E O) -> (P : S -> Type 0) ->
+    ((s : S) -> (e : E) -> P s -> P (first (step s e))) ->
+    (n : Size) -> (s : S) -> (xs : Stream E) -> P s -> P (mealyFrom S E O step n s xs) :=
+  fun (S : Type 0) (E : Type 0) (O : Type 0) (step : Mealy S E O) (P : S -> Type 0)
+      (keep : (s : S) -> (e : E) -> P s -> P (first (step s e))) (n : Size) =>
+    elim (fun (k : Size) => (s : S) -> (xs : Stream E) -> P s -> P (mealyFrom S E O step k s xs))
+      (fun (s : S) (xs : Stream E) (h : P s) => h)
+      (fun (k : Size) (ih : (s : S) -> (xs : Stream E) -> P s -> P (mealyFrom S E O step k s xs)) =>
+        fun (s : S) (xs : Stream E) (h : P s) => ih (first (step s (sHead E xs))) (sTail E xs) (keep s (sHead E xs) h)) n
+def mealyInv : (S : Type 0) -> (E : Type 0) -> (O : Type 0) -> (step : Mealy S E O) -> (P : S -> Type 0) ->
+    ((s : S) -> (e : E) -> P s -> P (first (step s e))) ->
+    (s0 : S) -> P s0 -> (n : Size) -> (es : Stream E) -> P (mealyAfter S E O step s0 n es) :=
+  fun (S : Type 0) (E : Type 0) (O : Type 0) (step : Mealy S E O) (P : S -> Type 0)
+      (keep : (s : S) -> (e : E) -> P s -> P (first (step s e))) (s0 : S) (h0 : P s0) (n : Size) (es : Stream E) =>
+    mealyInvFrom S E O step P keep n s0 es h0
 -- The parity quotient of Size:
 -- sizeEven s is sz0 for an even s and szS sz0 for an odd s, and parityEq
 -- is a path from parityOf a to parityOf b when a and b have the same

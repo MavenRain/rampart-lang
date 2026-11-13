@@ -17,10 +17,10 @@ request, the route, the slices and the open questions. "design sec N" is
 section N of `design/DESIGN.md`. A reading that is not ruled stays a
 recommendation.
 
-Status: S3 DONE (2026-11-12): total arithmetic with the kernel type `Wide`
-and the trap row of pontoon-lang 8b9111e are in the tree (section 8.1).
-Next: S4 (R1 formers: `Stream` codata, the state cell monad, the Mealy
-step, Q-S0-2).
+Status: S4 DONE (2026-11-12): the state cell monad `St` and the Mealy step
+are domain defs over the kernel codata `Stream` (section 3, Q-S4-1 (a)).
+Next: S5 (span pins: `pins/spans.tsv`, `langc pins verify`, `langc pins
+bump`, the gate row, Q-S0-16).
 
 ## 1. Rulings and questions
 
@@ -75,6 +75,7 @@ step, Q-S0-2).
 | 2026-11-12 | Q-S1-1 (a): X4 becomes law D3 in DISCHARGED: in each trace that meets the premise of Q-S1-2, an admitted request from an honest peer (scope Q-S1-3) gets its response or an explicit refusal Outcome within k step events; k depends only on Params. Kernel-checked inductive invariant, S11 LIA certificate. Counts: DISCHARGED 9 to 10, EXTERNAL 4 to 3. Law D3 names the bound `t`. Edits: PLAN sections 1.3, 6, 12, 14 (S8), 15 (OI-13); design secs 2.2, 4, 10. | USER, S1 |
 | 2026-11-12 | Q-S1-2 (b): Same window premise inside the D3 statement, but no ASSUMED row: the scheduler gap joins law X3 (transport and runtime internals, EXTERNAL). ASSUMED stays 2. The window premise (from (a)): in each window of `w` events (`w` in `Params`), the environment delivers a step to each ready handler; the adversary keeps all other order control. | USER, S1 |
 | 2026-11-12 | Q-S1-3 (a): Only requests from honest committee peers, which have reserved capacity under law D2. Unknown and known non-committee peers have no liveness claim in v1. | USER, S1 |
+| 2026-11-12 | Q-S4-1 (a): The state cell monad is Kleisli defs in `domain/domain.lang`: `St S A := S -> Prod S A` and the Mealy step `Mealy S E O := S -> E -> Prod S O`. The kernel does not change. | USER, S4 |
 
 The seed is `bin/new-lang.sh rampart-lang tcc-wasm` from lang-template
 5265a2a. The kit gives the parser, the checker, the evaluator, the lowering
@@ -302,6 +303,18 @@ law D2 uses `k`.
   too; the checker will likely find a counterexample.
   RULED: (a).
 
+### 1.4 Questions for the USER (S4)
+
+- Q-S4-1 The state cell monad (section 3, design sec 3). A state monad
+  `S -> S x A` has a field of type `S` and a function field, so as a family
+  it fails the cell criterion. (a) Kleisli defs in `domain/domain.lang`:
+  `St`, `stPure`, `stBind`, `stGet`, `stPut`, the three monad laws, the
+  step `Mealy`, its run over a `Stream` and the invariant principle
+  `mealyInv`. No kernel change. (b) An algebraic family with get and put
+  path constructors. The cell criterion changes in the kernel. (c) A
+  checker step rule on the `state` record.
+  RULED: (a).
+
 ## 2. The reading of R0: no runtime error
 
 R0 says that langc accepts no program that can lead to a runtime error.
@@ -485,6 +498,15 @@ differential, 0 mismatches. The other counts do not change. The kit row
 "a trap is equal to a trap" is gone: a `trap` line on either side of the
 differential is a failure, and the run has none (Q-S0-22 (a)).
 
+S4 gate counts (serial run, clean build, the state cell monad and the
+Mealy step). Examples 31 (S3: 30): `examples/mealy.lang`. Check refusals
+165 (163): `mealy-wrong.lang` (`TYPE_MISMATCH`) and `stream-self.lang`
+(`REFUSE_REC`). Evals 100 (91): nine `mealy` rows. IR files 31 (30) and
+valid Wasm modules 35 (34): `examples/mealy.lang`. Differential cases
+1898, 0 mismatches: `examples/mealy.lang` has no entry, so it adds no
+case. The other counts do not change. The kernel does not change
+(Q-S4-1 (a)).
+
 ## 11. Port sources
 
 | Source | What |
@@ -585,8 +607,8 @@ constants in the three paths (OI-12). The longest span is 94 lines
 | S1 | The USER rules section 1.2 | DONE |
 | S2 | Port the kernel and the total Wasm writer (Q-S0-20) | DONE |
 | S3 | Total arithmetic, bounded naturals, fixed point; the trap row (Q-S0-9, Q-S0-22) | DONE |
-| S4 | R1 formers: `Stream` codata, the state cell monad, the Mealy step (Q-S0-2) | NEXT |
-| S5 | Span pins: `pins/spans.tsv`, `langc pins verify`, `langc pins bump`, the gate row (Q-S0-16) | |
+| S4 | R1 formers: `Stream` codata, the state cell monad, the Mealy step (Q-S0-2, Q-S4-1) | DONE |
+| S5 | Span pins: `pins/spans.tsv`, `langc pins verify`, `langc pins bump`, the gate row (Q-S0-16) | NEXT |
 | S6 | Base carriers, `Params` and cited constants; confirm the section 13 spans (Q-S0-4, Q-S0-15) | |
 | S7 | Peers: score, penalty, bans, the peer table; laws A1, E1, E2, P1 | |
 | S8 | Admission and permits: admission, source admission, serve permits, service class, sync admission; laws D1, D2, D3 | |
@@ -673,3 +695,13 @@ constants in the three paths (OI-12). The longest span is 94 lines
   3. In `src/front/check.c`, `rule_pair` did the guest refusal of a `Wide`
      pair after it found the two field types. The refusal is now first.
   4. In `src/ir.h`, one comment line was longer than the other lines.
+
+- OI-19 `REFUSE_FORMER` (section 7, design sec 3) has no checker code. A
+  guest family or cofamily gives `REFUSE_DATA` (rule R1), so no guest
+  program can name a former outside the R1 table today. The domain slices
+  (S6 and later) must give `REFUSE_FORMER` or remove the code from
+  section 7.
+- OI-20 The USER S3 commit 38c7cc1 fixes `Wide` under `hcomp` in
+  `src/front/eval.c` (`data_field_type`: both limbs are `Nat`) and adds
+  two regressions to `test/fronttool.c`. pontoon-lang 8b9111e does not
+  have the fix. This repo does not change pontoon-lang.

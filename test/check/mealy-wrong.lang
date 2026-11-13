@@ -1,0 +1,2 @@
+-- A Mealy step with the wrong type: the body gives a state, not a pair.
+def badStep : Mealy Size Size Size := fun (s : Size) (e : Size) => s

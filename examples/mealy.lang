@@ -1,0 +1,42 @@
+-- The state cell monad and the Mealy step (S4, Q-S0-2 (a), Q-S4-1 (a)).
+-- events is the trace sz0, szS sz0, szS (szS sz0), ...
+def events : Stream Size := sCorec Size Size (fun (s : Size) => s) (fun (s : Size) => szS s) sz0
+def three : Size := szS (szS (szS sz0))
+-- counter counts the events. Its output is the count before the event.
+def counter : Mealy Size Size Size := fun (s : Size) (e : Size) => pair (szS s) s
+-- lastSeen keeps the last event. Its output is the state before the event.
+def lastSeen : Mealy Size Size Size := fun (s : Size) (e : Size) => pair e s
+-- toggle flips the state between sz0 and szS sz0.
+def toggle : Mealy Size Size Size := fun (s : Size) (e : Size) => pair (sizeFlip s) s
+-- Eval rows (test/eval/expect.txt).
+def eventsAt2 : Size := sNth Size (szS (szS sz0)) events
+def runAt0 : Size := sNth Size sz0 (mealyRun Size Size Size counter sz0 events)
+def runAt2 : Size := sNth Size (szS (szS sz0)) (mealyRun Size Size Size counter sz0 events)
+def lastAt2 : Size := sNth Size (szS (szS sz0)) (mealyRun Size Size Size lastSeen sz0 events)
+def afterThree : Size := mealyAfter Size Size Size counter sz0 three events
+def lastAfterThree : Size := mealyAfter Size Size Size lastSeen sz0 three events
+def toggleAfterThree : Size := mealyAfter Size Size Size toggle sz0 three events
+-- The same values as paths, by conversion.
+def runAt2Path : Path Size (sNth Size (szS (szS sz0)) (mealyRun Size Size Size counter sz0 events)) (szS (szS sz0)) := refl
+def afterThreePath : Path Size (mealyAfter Size Size Size counter sz0 three events) three := refl
+def kleisliPath : Path (St Size Size) (mealyKleisli Size Size Size counter sz0) (fun (s : Size) => pair (szS s) s) := refl
+-- The invariant: the toggle state is its own parity. toggleKeeps is the
+-- step case. mealyInv gives the invariant after each number of events.
+def toggleKeeps : (s : Size) -> (e : Size) -> Path Size (sizeEven s) s -> Path Size (sizeEven (first (toggle s e))) (first (toggle s e)) :=
+  fun (s : Size) (e : Size) (h : Path Size (sizeEven s) s) =>
+    elim (fun (t : Size) => Path Size (sizeEven (sizeFlip t)) (sizeFlip t)) refl
+      (fun (k : Size) (ih : Path Size (sizeEven (sizeFlip k)) (sizeFlip k)) => refl) s
+def toggleInv : (n : Size) -> (es : Stream Size) -> Path Size (sizeEven (mealyAfter Size Size Size toggle sz0 n es)) (mealyAfter Size Size Size toggle sz0 n es) :=
+  fun (n : Size) (es : Stream Size) =>
+    mealyInv Size Size Size toggle (fun (s : Size) => Path Size (sizeEven s) s) toggleKeeps sz0 refl n es
+-- The St laws at one instance.
+def countUp : St Size Size := fun (s : Size) => pair (szS s) s
+def countUnitL : Path (St Size Size) (stBind Size Size Size (stPure Size Size sz0) (fun (a : Size) => countUp)) countUp :=
+  stLawUnitL Size Size Size sz0 (fun (a : Size) => countUp)
+def countUnitR : Path (St Size Size) (stBind Size Size Size countUp (stPure Size Size)) countUp := stLawUnitR Size Size countUp
+def countAssoc : Path (St Size Size)
+    (stBind Size Size Size (stBind Size Size Size countUp (fun (a : Size) => countUp)) (fun (b : Size) => countUp))
+    (stBind Size Size Size countUp (fun (a : Size) => stBind Size Size Size countUp (fun (b : Size) => countUp))) :=
+  stLawAssoc Size Size Size Size countUp (fun (a : Size) => countUp) (fun (b : Size) => countUp)
+def countTwice : Size := second (stBind Size Size Size countUp (fun (a : Size) => countUp) sz0)
+def getPut : Size := first (stBind Size Size Unit (stGet Size) (fun (a : Size) => stPut Size (szS a)) sz0)

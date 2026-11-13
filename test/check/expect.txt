@@ -161,3 +161,5 @@ wide-mul-wide.lang TYPE_MISMATCH
 wide-narrow-nat.lang TYPE_MISMATCH
 wide-partial.lang REFUSE_PARTIAL
 kit-type-wide.lang REFUSE_KIT
+mealy-wrong.lang TYPE_MISMATCH
+stream-self.lang REFUSE_REC
