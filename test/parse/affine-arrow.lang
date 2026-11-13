@@ -1,0 +1,2 @@
+-- S2: the affine arrow is not in rampart-lang (no affine layer).
+def f : (x : S1) -o S1 := fun (x : S1) => x

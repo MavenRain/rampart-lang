@@ -17,8 +17,9 @@ request, the route, the slices and the open questions. "design sec N" is
 section N of `design/DESIGN.md`. A reading that is not ruled stays a
 recommendation.
 
-Status: S1 (rulings): the USER ruled sections 1.2 and 1.3 on 2026-11-12.
-Next: S2 (port the kernel, Q-S0-20).
+Status: S2 (kernel port): the Cubical TT kernel and the total Wasm writer
+of pontoon-lang a82331d are in the tree (2026-11-12).
+Next: S3 (total arithmetic and the trap row, Q-S0-9, Q-S0-22).
 
 ## 1. Rulings and questions
 
@@ -455,6 +456,15 @@ client against a local `langc serve` and a stub facilitator in C
 or shell harness. The kit's node differential stays. `make check` is the
 gate; logs that are kept come from a serial run.
 
+S2 gate counts (serial run, kernel port). Each count grows; no count
+drops. Examples 30 (S1: 10). Parse refusals 17 (9). Check refusals 158
+(19). Evals 79 (32). IR files 30 (10). Valid Wasm modules 33 (13).
+Differential cases 998 (813), 0 mismatches. New rows: IR lowerings 2,
+no-trap modules 4, no-trap bad rows 7, spine evals 10, and the path
+regressions of `build/pathtool`. The kit row `pick 2 4 9` now gives 4:
+the writer sets a `Flag` argument of 2 or more to 1 (`flag_norm` in
+`src/wasm.c`). The trap row stays until S3 (Q-S0-22 (a)).
+
 ## 11. Port sources
 
 | Source | What |
@@ -553,8 +563,8 @@ constants in the three paths (OI-12). The longest span is 94 lines
 |---|---|---|
 | S0 | Seed from the kit, design, this plan, README and AGENTS drafts | DONE |
 | S1 | The USER rules section 1.2 | DONE |
-| S2 | Port the kernel and the total Wasm writer (Q-S0-20) | NEXT |
-| S3 | Total arithmetic, bounded naturals, fixed point; the trap row (Q-S0-9, Q-S0-22) | |
+| S2 | Port the kernel and the total Wasm writer (Q-S0-20) | DONE |
+| S3 | Total arithmetic, bounded naturals, fixed point; the trap row (Q-S0-9, Q-S0-22) | NEXT |
 | S4 | R1 formers: `Stream` codata, the state cell monad, the Mealy step (Q-S0-2) | |
 | S5 | Span pins: `pins/spans.tsv`, `langc pins verify`, `langc pins bump`, the gate row (Q-S0-16) | |
 | S6 | Base carriers, `Params` and cited constants; confirm the section 13 spans (Q-S0-4, Q-S0-15) | |
@@ -605,3 +615,30 @@ constants in the three paths (OI-12). The longest span is 94 lines
   S8 reads them from the cited capacities (reserved slots, queue capacities,
   permits) and puts them in `Params`. If the span gives no bound, it is a
   question for S8.
+- OI-14 The kernel family `Word` is `SwapWord` in the ported kernel. The
+  name `Word` is free for the domain words.
+- OI-15 The kernel test data stays until the domain slices: the kernel
+  prelude in `domain/domain.lang`, the IR test families and the kernel
+  examples. S6 replaces the domain file and keeps each gate row that the
+  kernel needs.
+- OI-16 Some ported comments keep the slice tags of the source repos
+  (for example S3, S3c and S5 in `domain/README.md`, `examples/` and
+  `test/pathtool.c`). These tags name slices of the source repos, not
+  slices of this plan. Ported text names no plan item of another repo.
+- OI-17 Six defects inherited from the pontoon kernel port. pontoon-lang
+  a82331d has the same text. S2 fixes them in this repo. A later port of
+  the pontoon kernel must fix them again.
+  1. `langc abi` accepted `--text` and set a JSON flag that no code read,
+     so the two forms gave the same output. Now `abi` takes only the
+     program and prints the name of each entry, one for each line.
+  2. In `formers/tcc-wasm.md`, rows F12, F13 and F15 cited wrong lines of
+     `domain/domain.lang`. The cites now give the correct lines.
+  3. `src/front/ast.h` had two blank lines before the first `typedef`.
+  4. In `src/front/check.h`, the `check_program` comment was above the
+     `CheckMode` typedef. The typedef is now first, and the comment names
+     MODE.
+  5. `test/gate.sh` counted the time hint row before the check, so the
+     count was always 1. The gate now prints `time hint: 1 checked` only
+     when the check passes. The log of a passing gate does not change.
+  6. `test/pathtool.c` wrote the `transport` def and the `Trunc1` family
+     two times. Each is now one string-literal macro.

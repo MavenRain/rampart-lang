@@ -1,0 +1,6 @@
+-- REFUSE_TIME: `block` is a time word. A program counts operations:
+-- a position is `len r` (an OpPos). This row was the example
+-- examples/blocks.lang.
+state State := makeState (seen : Nat)
+def init : State := makeState 0
+def stamp : State -> State := fun (s : State) => makeState (block s)

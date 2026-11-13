@@ -1,0 +1,2 @@
+-- S2: unpack is not in rampart-lang (no affine layer).
+def h : (x : S1) -> S1 := fun (x : S1) => unpack x

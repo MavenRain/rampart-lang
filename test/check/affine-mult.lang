@@ -1,0 +1,2 @@
+-- S2: binder multiplicities are not in rampart-lang (no affine layer).
+def g : (x : S1) -> S1 := fun (x : S1) => x @1

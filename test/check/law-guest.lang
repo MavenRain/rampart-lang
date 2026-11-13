@@ -1,0 +1,2 @@
+-- REFUSE_DATA (the law-only rule): `law` is a domain-only modifier.
+law def myLaw : Size := sz0

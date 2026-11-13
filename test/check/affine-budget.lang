@@ -1,0 +1,2 @@
+-- S2: the Budget resource sort is not in rampart-lang (no affine layer).
+def b : (x : Budget) -> Budget := fun (x : Budget) => x
