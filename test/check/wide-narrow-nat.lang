@@ -1,0 +1,2 @@
+-- wideNarrow takes a Wide, not a Nat (S3).
+def f : (a : Nat) -> Option Nat := fun (a : Nat) => wideNarrow a

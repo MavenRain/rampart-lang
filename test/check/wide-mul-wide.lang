@@ -1,0 +1,2 @@
+-- wideMul takes two Nat values, not two Wide values (S3).
+def f : (p : Wide) -> Wide := fun (p : Wide) => wideMul p p

@@ -183,6 +183,23 @@ int main(void) {
   ok &= internal_print_refused("Strm Unit", "strmCorec Unit Unit (fun s => s) (fun s => s) unit");
   ok &= normal_roundtrip("Map Nat Nat -> Nat", "fun m => mapGet m 0");
   ok &= normal_roundtrip("Map Nat Nat -> Map Nat Nat", "fun m => mapSet m 0 1");
+  /* Wide normal forms must check as Wide, including inside open functions. */
+  ok &= normal_roundtrip("Wide", "wideOf 7");
+  ok &= normal_roundtrip("Wide", "wideMul 18446744073709551615 18446744073709551615");
+  ok &= normal_roundtrip("Option Wide", "some (wideOf 7)");
+  ok &= normal_roundtrip("Nat -> Flag", "fun x => wideEq (wideMul x 4294967296) (wideOf 7)");
+  ok &= normal_roundtrip("Nat -> Flag", "fun x => wideLe (pair x 0) (wideMul x x)");
+  /* Cubical composition visits both Nat limbs, including below Option. */
+  ok &= domain("def compose : Path Wide "
+               "(hcomp Wide i0 (fun (i : I) => [ ]) (wideOf 7)) (wideOf 7) := refl", NULL);
+  ok &= domain("def compose : Path (Option Wide) "
+               "(hcomp (Option Wide) i0 (fun (i : I) => [ ]) (some (wideOf 7))) "
+               "(some (wideOf 7)) := refl", NULL);
+  ok &= domain("def product : Path Wide (wideMul 18446744073709551615 18446744073709551615) "
+               "(pair 18446744073709551614 1) := refl", NULL);
+  ok &= domain("def bad : Wide := pair flagYes 0", "TYPE_MISMATCH");
+  ok &= domain("def bad : Wide := pair 0 flagYes", "TYPE_MISMATCH");
+  ok &= checked_in("def W : Type 0 := Wide\n", "def bad : W := pair 0 7", ORIGIN_PROGRAM, CHECK_GUEST, "REFUSE_KIT");
   /* Recursive occurrences under function domains remain forbidden in paths. */
   ok &= domain("family Bad := base | mkBad (x : Bad) "
                "(p : Path (Bad -> Bad) (fun (y : Bad) => x) (fun (y : Bad) => x))",

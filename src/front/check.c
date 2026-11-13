@@ -109,6 +109,8 @@ typedef enum {
   RULE_NONZERO_OF,    /* nonZero x */
   RULE_NONZERO_VALUE, /* nonZeroValue x */
   RULE_DIV,           /* natDiv, natMod: a NonZero divisor */
+  RULE_WIDE2,         /* S3: wideAdd, wideEq, wideLe: two Wide arguments */
+  RULE_WIDE_NARROW,   /* wideNarrow p: Option Nat */
   RULE_KMAP,
   RULE_KMAP_GET,
   RULE_KMAP_SET,
@@ -192,6 +194,13 @@ static const Builtin BUILTINS[] = {
   {"NonZero", 1, RULE_NONZERO, OP_NONZERO, OP_NAT, 0, VIS_INTERNAL},
   {"nonZero", 1, RULE_NONZERO_OF, OP_NONZERO_OF, OP_OPTION, 0, VIS_INTERNAL},
   {"nonZeroValue", 1, RULE_NONZERO_VALUE, OP_NONZERO_VALUE, OP_NAT, 0, VIS_INTERNAL},
+  {"Wide", 0, RULE_TYPE0, OP_WIDE, OP_NAT, 0, VIS_INTERNAL},
+  {"wideMul", 2, RULE_NAT2, OP_WIDE_MUL, OP_WIDE, 0, VIS_INTERNAL},
+  {"wideOf", 1, RULE_NAT2, OP_WIDE_OF, OP_WIDE, 0, VIS_INTERNAL},
+  {"wideAdd", 2, RULE_WIDE2, OP_WIDE_ADD, OP_OPTION, 0, VIS_INTERNAL},
+  {"wideEq", 2, RULE_WIDE2, OP_WIDE_EQ, OP_FLAG, 0, VIS_INTERNAL},
+  {"wideLe", 2, RULE_WIDE2, OP_WIDE_LE, OP_FLAG, 0, VIS_INTERNAL},
+  {"wideNarrow", 1, RULE_WIDE_NARROW, OP_WIDE_NARROW, OP_OPTION, 0, VIS_INTERNAL},
   {"len", 2, RULE_LEN, OP_FM_LEN, OP_NAT, 0, VIS_GUEST},
 };
 
@@ -512,6 +521,8 @@ static int path_ends(Checker *c, const Value *e, const Value *v0, const Value *v
 static const Core *elab(Checker *c, const Term *t, const Value *hint, const Value **type);
 static const Core *check_lam(Checker *c, const Term *t, const Value *hint, const Value **type);
 static const Core *checked_annotation(Checker *c, const Term *ann, const Value *dom);
+static int guest(const Checker *c);
+static int kit_refused(Checker *c, const char *what);
 
 static const Core *check(Checker *c, const Term *t, const Value *want) {
   const Value *type = NULL;
@@ -696,11 +707,15 @@ static const Core *rule_path(Call *k) {
 
 static const Core *rule_pair(Call *k) {
   Checker *c = k->c;
-  const Value *ta = val_is(k->hint, OP_PROD) ? k->hint->args[0] : NULL;
-  const Value *tb = val_is(k->hint, OP_PROD) ? k->hint->args[1] : NULL;
+  /* A Wide normal form is pair hi lo. Both limbs are Nat kit values. */
+  int is_wide = val_is(k->hint, OP_WIDE);
+  if (is_wide && guest(c))
+    return nul(kit_refused(c, "Wide pair"));
+  const Value *ta = is_wide ? nat_type(c) : val_is(k->hint, OP_PROD) ? k->hint->args[0] : NULL;
+  const Value *tb = is_wide ? ta : val_is(k->hint, OP_PROD) ? k->hint->args[1] : NULL;
   const Core *a = ta != NULL ? check(c, k->args[0], ta) : infer(c, k->args[0], &ta);
   const Core *b = a == NULL ? NULL : (tb != NULL ? check(c, k->args[1], tb) : infer(c, k->args[1], &tb));
-  k->type = tyop(c, OP_PROD, 2, ta, tb, NULL);
+  k->type = is_wide ? k->hint : tyop(c, OP_PROD, 2, ta, tb, NULL);
   return op3(c, OP_PAIR, 0, 2, a, b, NULL);
 }
 
@@ -2248,6 +2263,15 @@ static const Core *rule_div(Call *k) {
   return op3(c, k->b->op, 0, 2, x, d, NULL);
 }
 
+/* wideNarrow p (S3): p : Wide, the result Option Nat (some lo when the
+   high limb is 0). */
+static const Core *rule_wide_narrow(Call *k) {
+  Checker *c = k->c;
+  const Core *x = check(c, k->args[0], tyop(c, OP_WIDE, 0, NULL, NULL, NULL));
+  k->type = tyop(c, OP_OPTION, 1, tyop(c, OP_NAT, 0, NULL, NULL, NULL), NULL, NULL);
+  return op3(c, OP_WIDE_NARROW, 0, 1, x, NULL, NULL);
+}
+
 /* flagIf b yes no */
 static const Core *rule_flag_if(Call *k) {
   Checker *c = k->c;
@@ -2388,6 +2412,10 @@ static const Core *rule(Call *k) {
     return rule_nonzero_value(k);
   case RULE_DIV:
     return rule_div(k);
+  case RULE_WIDE2:
+    return rule_prim(k, OP_WIDE);
+  case RULE_WIDE_NARROW:
+    return rule_wide_narrow(k);
   case RULE_KMAP:
     return rule_kmap(k);
   case RULE_KMAP_GET:
@@ -2535,8 +2563,6 @@ static int find_known(Checker *c, const char *name, Head *h) {
   }
   return 0;
 }
-
-static int guest(const Checker *c);
 
 /* A partial name (S3): the kit has no
    total word with this name. KIT is the hint for the kit mode and the

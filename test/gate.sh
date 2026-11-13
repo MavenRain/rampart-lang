@@ -86,7 +86,13 @@ while IFS= read -r line; do
   name=$2
   shift 2
   status=0
-  got=$(build/langc $(kit examples/kit.txt "$file.lang") eval "examples/$file.lang" "$name" "$@" 2>"$tmp/err") || status=$?
+  # A FILE under test/ is a kit file: the row runs it with --kit (S3).
+  path="examples/$file.lang"
+  kitarg=$(kit examples/kit.txt "$file.lang")
+  case "$file" in
+    test/*) path="$file.lang" kitarg=--kit ;;
+  esac
+  got=$(build/langc $kitarg eval "$path" "$name" "$@" 2>"$tmp/err") || status=$?
   first=$(head -n 1 "$tmp/err")
   evals=$((evals + 1))
   case "$status|$got|$first" in
@@ -192,6 +198,7 @@ ir_lowered natops.lang
 cmp -s "$tmp/natops.lang.ir" test/ir/natops.ir || { echo "FAIL natops.lang: the IR text is not test/ir/natops.ir"; fail=$((fail + 1)); }
 ir_lowered block.lang
 cmp -s "$tmp/block.lang.ir" test/ir/block.ir || { echo "FAIL block.lang: the IR text is not test/ir/block.ir"; fail=$((fail + 1)); }
+ir_lowered wide.lang
 echo "ir lowerings: $irlowered lowered"
 
 # The writer (S3): `langc --kit build
@@ -278,8 +285,9 @@ echo "spine evals: $spineevals checked"
 
 # The Wasm target: each module builds and is valid. Then the differential:
 # on the grid of test/grid.awk, node and `langc eval` give the same result
-# for each entry (trap == trap). S3 changes this row (Q-S0-22 (a)). The
-# stderr of eval is not merged into stdout. A file in test/ir/ takes --kit.
+# for each entry. R0 (docs/PLAN.md section 2, Q-S0-22 (a)): no target
+# traps, so a `trap` line on either side is a FAIL. The stderr of eval is
+# not merged into stdout. A file in test/ir/ takes --kit.
 wasms=0
 cases=0
 mismatches=0
@@ -289,7 +297,7 @@ difkit() {
     *) kit examples/kit.txt "$(basename "$1")" ;;
   esac
 }
-for f in examples/*.lang test/ir/natops.lang test/ir/block.lang test/ir/proof-trap.lang; do
+for f in examples/*.lang test/ir/natops.lang test/ir/block.lang test/ir/proof-trap.lang test/ir/wide.lang; do
   w="$tmp/$(basename "$f" .lang).wasm"
   wasms=$((wasms + 1))
   if ! build/langc $(difkit "$f") build "$f" -o "$w" 2>"$tmp/w.err" || ! wasm-validate "$w" 2>>"$tmp/w.err" ||
@@ -317,6 +325,8 @@ for f in examples/*.lang test/ir/natops.lang test/ir/block.lang test/ir/proof-tr
   bad=$(rg -c '.' "$tmp/bad.txt" || echo 0)
   mismatches=$((mismatches + bad))
   [ "$bad" -eq 0 ] || { echo "FAIL differential $f: $bad mismatches, first $(head -n 1 "$tmp/bad.txt")"; fail=$((fail + 1)); }
+  traps=$(cat "$tmp/want.txt" "$tmp/got.txt" | rg -c -x -F trap || echo 0)
+  [ "$traps" -eq 0 ] || { echo "FAIL trap $f: $traps trap lines (R0)"; fail=$((fail + 1)); }
 done
 echo "wasm: $wasms modules valid"
 echo "differential: $cases cases, $mismatches mismatches"

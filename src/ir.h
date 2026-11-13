@@ -9,8 +9,9 @@
    static heap bound (heap_words); the lowering refuses an entry without one.
 
    Each op is total (S3): no expression traps, and a value has no trap
-   flag. ADD and MUL wrap; ADD_CARRY gives 1 on an overflow. A heap block is
-   word 0 = the tag, then field K at word 1 + K. */
+   flag. ADD and MUL wrap; ADD_CARRY gives 1 on an overflow. MUL_HI gives
+   the high word of a product, so MUL and MUL_HI give the full product. A
+   heap block is word 0 = the tag, then field K at word 1 + K. */
 #ifndef LANG_IR_H
 #define LANG_IR_H
 
@@ -30,7 +31,8 @@ typedef enum {
   IR_OP_LE,        /* 1 when left <= right, else 0 */
   IR_OP_ADD_CARRY, /* 1 when the sum is larger than 2^64 - 1, else 0 */
   IR_OP_DIV,       /* the quotient; the right operand is a NonZero (S3) */
-  IR_OP_MOD        /* the remainder; the right operand is a NonZero (S3) */
+  IR_OP_MOD,       /* the remainder; the right operand is a NonZero (S3) */
+  IR_OP_MUL_HI     /* the high 64 bits of the 128-bit product (S3, Wide) */
 } IrOp;
 
 typedef enum {

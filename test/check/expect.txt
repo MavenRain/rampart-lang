@@ -156,3 +156,8 @@ partial-zero.lang REFUSE_PARTIAL
 affine-budget.lang NAME_UNKNOWN
 affine-mult.lang TYPE_MISMATCH
 affine-unpack.lang NAME_UNKNOWN
+wide-add-nat.lang TYPE_MISMATCH
+wide-mul-wide.lang TYPE_MISMATCH
+wide-narrow-nat.lang TYPE_MISMATCH
+wide-partial.lang REFUSE_PARTIAL
+kit-type-wide.lang REFUSE_KIT

@@ -1,0 +1,2 @@
+-- wideAdd gives an Option Wide, not a Wide (S3, REFUSE_PARTIAL).
+def f : (p q : Wide) -> Wide := fun (p q : Wide) => wideAdd p q

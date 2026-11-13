@@ -17,9 +17,10 @@ request, the route, the slices and the open questions. "design sec N" is
 section N of `design/DESIGN.md`. A reading that is not ruled stays a
 recommendation.
 
-Status: S2 (kernel port): the Cubical TT kernel and the total Wasm writer
-of pontoon-lang a82331d are in the tree (2026-11-12).
-Next: S3 (total arithmetic and the trap row, Q-S0-9, Q-S0-22).
+Status: S3 DONE (2026-11-12): total arithmetic with the kernel type `Wide`
+and the trap row of pontoon-lang 8b9111e are in the tree (section 8.1).
+Next: S4 (R1 formers: `Stream` codata, the state cell monad, the Mealy
+step, Q-S0-2).
 
 ## 1. Rulings and questions
 
@@ -312,11 +313,16 @@ is total, and every failure in the domain is a value (Q-S0-1).
   `Verdict`, `Admit` or `Outcome`. None is a trap.
 - A Rust panic site in a cited span is an `Outcome` branch. The T2 report
   lists a reached branch as a FINDING.
-- Arithmetic is total (Q-S0-9). No `f64`.
+- Arithmetic is total (Q-S0-9). No `f64`. The kernel words of `Wide` (a
+  number below 2^128 in two 64-bit limbs) are total: `wideMul` of two
+  `Nat` values always fits, and `wideAdd` and `wideNarrow` give `none` past
+  their range. A Rust `checked_mul` is `wideNarrow (wideMul a b)`. The Nat
+  words `natSub`, `natDiv` and `natMod` and the `Wide` words are kit words.
+  A guest program does not name them.
 - Host input that does not decode is a `reject`, never a trap (permit-lang
   `test/notraptool.c` precedent).
-- The kit row "a trap is equal to a trap" (`docs/host/README.md:172`)
-  changes in S3 (Q-S0-22, OI-4).
+- The gate has no row "a trap is equal to a trap". A `trap` line on either
+  side of the differential is a failure (S3, Q-S0-22 (a), OI-4).
 
 ## 3. The reading of R1
 
@@ -380,8 +386,13 @@ Ten codes (Q-S0-24). `langc check --json` gives each with a fix hint.
 
 ### 8.1 Kernel
 
-S2 ports the Cubical TT kernel and the total Wasm writer (Q-S0-20). S3
-makes arithmetic total (Q-S0-9) and changes the trap row (Q-S0-22).
+S2 (DONE) ports the Cubical TT kernel and the total Wasm writer
+(Q-S0-20). The total Nat arithmetic of gavel-lang 86c2f30 comes with that
+port. S3 (DONE) ports pontoon-lang 8b9111e: the kernel type `Wide`, its
+kit words `wideMul`, `wideOf`, `wideAdd`, `wideLe`, `wideEq` and
+`wideNarrow`, the IR op `MUL_HI` (a `Wide` lowers as a 2-word heap block)
+and the trap row (Q-S0-9 (a), Q-S0-22 (a)). The fixed-point scale of
+`peers/score.rs` is domain work (OI-8, S7).
 
 ### 8.2 The two targets
 
@@ -463,7 +474,16 @@ Differential cases 998 (813), 0 mismatches. New rows: IR lowerings 2,
 no-trap modules 4, no-trap bad rows 7, spine evals 10, and the path
 regressions of `build/pathtool`. The kit row `pick 2 4 9` now gives 4:
 the writer sets a `Flag` argument of 2 or more to 1 (`flag_norm` in
-`src/wasm.c`). The trap row stays until S3 (Q-S0-22 (a)).
+`src/wasm.c`).
+
+S3 gate counts (serial run, clean build, `Wide` and the trap row). Check
+refusals 163 (S2: 158): five `Wide` rows in `test/check/`. Kit-only
+refusals 11 (10): `kit-type-wide.lang`. Evals 91 (79): twelve `Wide`
+rows. IR lowerings 3 (2): `test/ir/wide.lang`. Valid Wasm modules 34
+(33) and differential cases 1898 (998): `test/ir/wide.lang` joins the
+differential, 0 mismatches. The other counts do not change. The kit row
+"a trap is equal to a trap" is gone: a `trap` line on either side of the
+differential is a failure, and the run has none (Q-S0-22 (a)).
 
 ## 11. Port sources
 
@@ -564,8 +584,8 @@ constants in the three paths (OI-12). The longest span is 94 lines
 | S0 | Seed from the kit, design, this plan, README and AGENTS drafts | DONE |
 | S1 | The USER rules section 1.2 | DONE |
 | S2 | Port the kernel and the total Wasm writer (Q-S0-20) | DONE |
-| S3 | Total arithmetic, bounded naturals, fixed point; the trap row (Q-S0-9, Q-S0-22) | NEXT |
-| S4 | R1 formers: `Stream` codata, the state cell monad, the Mealy step (Q-S0-2) | |
+| S3 | Total arithmetic, bounded naturals, fixed point; the trap row (Q-S0-9, Q-S0-22) | DONE |
+| S4 | R1 formers: `Stream` codata, the state cell monad, the Mealy step (Q-S0-2) | NEXT |
 | S5 | Span pins: `pins/spans.tsv`, `langc pins verify`, `langc pins bump`, the gate row (Q-S0-16) | |
 | S6 | Base carriers, `Params` and cited constants; confirm the section 13 spans (Q-S0-4, Q-S0-15) | |
 | S7 | Peers: score, penalty, bans, the peer table; laws A1, E1, E2, P1 | |
@@ -591,8 +611,9 @@ constants in the three paths (OI-12). The longest span is 94 lines
   Check them against the x402 text in S17. Do not guess.
 - OI-2 The `server.json` schema of the MCP Registry. Check it in S18.
 - OI-3 The `funding.json` schema. Check it in S18.
-- OI-4 The kit row "a trap is equal to a trap". Q-S0-22 (a): S3 changes
-  it.
+- OI-4 CLOSED (S3). The kit row "a trap is equal to a trap" is gone. By
+  Q-S0-22 (a), a `trap` line on either side of the differential is a
+  failure.
 - OI-5 The facilitator URL and the payTo address are USER inputs. No
   default address in the repo.
 - OI-6 `doc-check.pl` was not run at S0 (pontoon S0 precedent).
@@ -642,3 +663,13 @@ constants in the three paths (OI-12). The longest span is 94 lines
      when the check passes. The log of a passing gate does not change.
   6. `test/pathtool.c` wrote the `transport` def and the `Trunc1` family
      two times. Each is now one string-literal macro.
+- OI-18 Four style defects inherited from the pontoon S3 port. pontoon-lang
+  8b9111e has the same text. S3 fixes them in this repo. The behavior does
+  not change, and the gate log is equal.
+  1. In `src/wasm.c`, `half` wrote the shift of `shr32` again. `shr32` is
+     now above `half`, and `half` calls it.
+  2. `src/front/check.c` had two blank lines where the `guest` declaration
+     was before.
+  3. In `src/front/check.c`, `rule_pair` did the guest refusal of a `Wide`
+     pair after it found the two field types. The refusal is now first.
+  4. In `src/ir.h`, one comment line was longer than the other lines.

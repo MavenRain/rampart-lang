@@ -1,0 +1,2 @@
+-- wideAdd takes two Wide values, not two Nat values (S3).
+def f : (a b : Nat) -> Option Wide := fun (a b : Nat) => wideAdd a b

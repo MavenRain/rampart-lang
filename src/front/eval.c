@@ -29,7 +29,9 @@ static const char *const OP_NAMES[] = {
   [OP_SYSTEM] = "system", [OP_HCOMP] = "hcomp", [OP_FIN] = "Fin",
   [OP_FIN_ADD] = "finAdd", [OP_FIN_NEG] = "finNeg", [OP_FIN_CASE] = "finCase",
   [OP_GLUE] = "Glue", [OP_GLUE_ELEM] = "glue", [OP_UNGLUE] = "unglue",
-  [OP_NONZERO] = "NonZero", [OP_NONZERO_OF] = "nonZero", [OP_NONZERO_VALUE] = "nonZeroValue"
+  [OP_NONZERO] = "NonZero", [OP_NONZERO_OF] = "nonZero", [OP_NONZERO_VALUE] = "nonZeroValue",
+  [OP_WIDE] = "Wide", [OP_WIDE_MUL] = "wideMul", [OP_WIDE_OF] = "wideOf", [OP_WIDE_ADD] = "wideAdd",
+  [OP_WIDE_EQ] = "wideEq", [OP_WIDE_LE] = "wideLe", [OP_WIDE_NARROW] = "wideNarrow"
 };
 
 /* The number of arguments of each operation. VARIES: it comes from the
@@ -51,7 +53,9 @@ static const unsigned char OP_ARITY[] = {
   [OP_SYSTEM] = VARIES, [OP_HCOMP] = 4, [OP_FIN] = 1, [OP_FIN_ADD] = 3,
   [OP_FIN_NEG] = 2, [OP_FIN_CASE] = VARIES, [OP_GLUE] = 3, [OP_GLUE_ELEM] = 3,
   [OP_UNGLUE] = 4,
-  [OP_NONZERO] = 1, [OP_NONZERO_OF] = 1, [OP_NONZERO_VALUE] = 1
+  [OP_NONZERO] = 1, [OP_NONZERO_OF] = 1, [OP_NONZERO_VALUE] = 1,
+  [OP_WIDE] = 0, [OP_WIDE_MUL] = 2, [OP_WIDE_OF] = 1, [OP_WIDE_ADD] = 2,
+  [OP_WIDE_EQ] = 2, [OP_WIDE_LE] = 2, [OP_WIDE_NARROW] = 1
 };
 
 typedef enum {
@@ -1327,6 +1331,110 @@ static const Value *nonzero_value(Machine *m, const Value *const *a, uint32_t n)
   return a[0];
 }
 
+/* Wide (S3, Q-S0-9 (a)): a value is pair hi lo, two Nat limbs. */
+static const Value *wide(Machine *m, uint64_t hi, uint64_t lo) {
+  return make(m, VAL_OP, OP_PAIR, 0, 2, val_nat(m, hi), val_nat(m, lo), NULL);
+}
+
+/* 1 when each of the N Wide arguments is a closed pair of numbers; HI[K]
+   and LO[K] get the limbs of A[K]. A neutral argument or a neutral limb
+   gives the stuck operation in *OUT. */
+static int wide_args(Machine *m, Op op, const Value *const *a, uint32_t n, uint64_t *hi, uint64_t *lo, const Value **out) {
+  uint32_t k;
+  for (k = 0; k < n; k++)
+    if (blocked(m, a[k], op, 0, 0, a, n, out))
+      return 0;
+  for (k = 0; k < n; k++) {
+    if (!val_is(a[k], OP_PAIR) || a[k]->argc != 2u) {
+      *out = internal(m, "a Wide operation on a value that is not a pair");
+      return 0;
+    }
+    if (blocked(m, a[k]->args[0], op, 0, 0, a, n, out) || blocked(m, a[k]->args[1], op, 0, 0, a, n, out))
+      return 0;
+    if (a[k]->args[0]->kind != VAL_NAT || a[k]->args[1]->kind != VAL_NAT) {
+      *out = internal(m, "a Wide limb that is not a Nat");
+      return 0;
+    }
+    hi[k] = a[k]->args[0]->nat;
+    lo[k] = a[k]->args[1]->nat;
+  }
+  return 1;
+}
+
+/* wideMul x y: the full product. The sum of x 2^i over the 1 bits i of y,
+   in 128 bits. src/wasm.c uses 32-bit partial products, so the
+   differential test compares two methods. */
+static const Value *wide_mul(Machine *m, const Value *const *a, uint32_t n) {
+  const Value *out;
+  uint64_t x = 0;
+  uint64_t y = 0;
+  uint64_t xh = 0;
+  uint64_t hi = 0;
+  uint64_t lo = 0;
+  uint32_t i;
+  if (!nat_args(m, OP_WIDE_MUL, a, n, &x, &y, &out))
+    return out;
+  for (i = 0; i < 64u; i++) {
+    if ((y >> i) & 1u) {
+      lo += x;
+      hi += xh + (lo < x ? 1u : 0u);
+    }
+    xh = (xh << 1) | (x >> 63);
+    x <<= 1;
+  }
+  return wide(m, hi, lo);
+}
+
+/* wideOf x: pair 0 x. */
+static const Value *wide_of(Machine *m, const Value *const *a, uint32_t n) {
+  const Value *out;
+  if (blocked(m, a[0], OP_WIDE_OF, 0, 0, a, n, &out))
+    return out;
+  if (a[0]->kind != VAL_NAT)
+    return internal(m, "wideOf on a value that is not a Nat");
+  return wide(m, 0, a[0]->nat);
+}
+
+/* wideAdd p q: some (p + q), or none above 2^128 - 1. */
+static const Value *wide_add(Machine *m, const Value *const *a, uint32_t n) {
+  const Value *out;
+  uint64_t hi[2] = {0, 0};
+  uint64_t lo[2] = {0, 0};
+  uint64_t l;
+  uint64_t hs;
+  uint64_t h;
+  if (!wide_args(m, OP_WIDE_ADD, a, n, hi, lo, &out))
+    return out;
+  l = lo[0] + lo[1];
+  hs = hi[0] + hi[1];
+  h = hs + (l < lo[0] ? 1u : 0u);
+  if (hs < hi[0] || h < hs)
+    return constant(m, OP_NONE);
+  return make(m, VAL_OP, OP_SOME, 0, 1, wide(m, h, l), NULL, NULL);
+}
+
+/* wideEq p q and wideLe p q: a Flag. */
+static const Value *wide_test(Machine *m, Op op, const Value *const *a, uint32_t n) {
+  const Value *out;
+  uint64_t hi[2] = {0, 0};
+  uint64_t lo[2] = {0, 0};
+  if (!wide_args(m, op, a, n, hi, lo, &out))
+    return out;
+  if (op == OP_WIDE_EQ)
+    return flag(m, hi[0] == hi[1] && lo[0] == lo[1]);
+  return flag(m, hi[0] < hi[1] || (hi[0] == hi[1] && lo[0] <= lo[1]));
+}
+
+/* wideNarrow p: some lo when hi is 0, else none. */
+static const Value *wide_narrow(Machine *m, const Value *const *a, uint32_t n) {
+  const Value *out;
+  uint64_t hi[1] = {0};
+  uint64_t lo[1] = {0};
+  if (!wide_args(m, OP_WIDE_NARROW, a, n, hi, lo, &out))
+    return out;
+  return hi[0] == 0 ? make(m, VAL_OP, OP_SOME, 0, 1, val_nat(m, lo[0]), NULL, NULL) : constant(m, OP_NONE);
+}
+
 /* finAdd n a b: (a + b) mod n, with no overflow. A[0] is n. */
 static const Value *fin_add(Machine *m, const Value *const *a, uint32_t n) {
   const Value *out;
@@ -1886,6 +1994,7 @@ static const Value *transp_data(Machine *m, const Value *head, const Value *line
   case OP_UNIT:
   case OP_KMAP:
   case OP_NONZERO:
+  case OP_WIDE:
     return base;
   case OP_PROD:
     if (neutral)
@@ -1976,6 +2085,12 @@ static const Value *transp_data(Machine *m, const Value *head, const Value *line
   case OP_UNGLUE:
   case OP_NONZERO_OF:
   case OP_NONZERO_VALUE:
+  case OP_WIDE_MUL:
+  case OP_WIDE_OF:
+  case OP_WIDE_ADD:
+  case OP_WIDE_EQ:
+  case OP_WIDE_LE:
+  case OP_WIDE_NARROW:
     return internal(m, "a transport along a line that is not a type");
   }
   return transp_stuck(m, line, phi, base);
@@ -2175,7 +2290,9 @@ static const Value *hcomp_true(Machine *m, const Value *ty, const Value *phi, co
 
 /* The type of the argument FIELD of the constructor value V in the data
    type TY, or NULL. */
-static const Value *data_field_type(const Value *ty, const Value *v, uint32_t field) {
+static const Value *data_field_type(Machine *m, const Value *ty, const Value *v, uint32_t field) {
+  if (val_is(v, OP_PAIR) && val_is(ty, OP_WIDE) && field < 2u)
+    return constant(m, OP_NAT);
   if (val_is(v, OP_PAIR) && val_is(ty, OP_PROD) && field < 2u)
     return ty->args[field];
   if ((val_is(v, OP_INL) && val_is(ty, OP_SUM)) || (val_is(v, OP_SOME) && val_is(ty, OP_OPTION)) || (val_is(v, OP_CONS) && val_is(ty, OP_LIST) && field == 0u))
@@ -2217,7 +2334,7 @@ static const Value *hcomp_data(Machine *m, const Value *ty, const Value *phi, co
   if (args == NULL)
     return oom(m);
   for (k = 0; k < base->argc; k++) {
-    field = data_field_type(ty, base, k);
+    field = data_field_type(m, ty, base, k);
     if (field == NULL || field->kind == VAL_UNIV)
       return hcomp_stuck(m, ty, phi, sys, base);
     args[k] = hcomp(m, field, phi, sys_map(m, sys, CLOS_SYS_ARG, k, 0, NULL, NULL, NULL), base->args[k]);
@@ -2859,6 +2976,7 @@ static const Value *reduce_op(Machine *m, Op op, uint32_t inst, uint32_t field, 
   case OP_KMAP:
   case OP_KMAP_OF:
   case OP_NONZERO:
+  case OP_WIDE:
     return val_op(m, VAL_OP, op, inst, field, a, n);
   case OP_CTOR:
     return reduce_ctor(m, inst, field, a, n);
@@ -2918,6 +3036,17 @@ static const Value *reduce_op(Machine *m, Op op, uint32_t inst, uint32_t field, 
     return nonzero_of(m, a, n);
   case OP_NONZERO_VALUE:
     return nonzero_value(m, a, n);
+  case OP_WIDE_MUL:
+    return wide_mul(m, a, n);
+  case OP_WIDE_OF:
+    return wide_of(m, a, n);
+  case OP_WIDE_ADD:
+    return wide_add(m, a, n);
+  case OP_WIDE_EQ:
+  case OP_WIDE_LE:
+    return wide_test(m, op, a, n);
+  case OP_WIDE_NARROW:
+    return wide_narrow(m, a, n);
   case OP_FM_LEN:
     return fm_len(m, a, n);
   case OP_FLAG_IF:

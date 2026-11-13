@@ -1,0 +1,23 @@
+-- The Wide operations of S3 (Q-S0-9 (a)). Each entry has two Nat
+-- parameters and gives a Nat or a Flag, so the differential row runs each
+-- entry on the full grid of test/grid.awk (100 cases). The grid values at the
+-- 2^32 and 2^64 limits make the carry of each limb.
+-- An Option Wide gives 2 for none (an overflow), 1 for a sum that does not
+-- narrow, else the narrowed Nat.
+def mulNarrow : (a b : Nat) -> Nat := fun (a b : Nat) => option 0 (fun (s : Nat) => s) (wideNarrow (wideMul a b))
+def sqLe : (a b : Nat) -> Flag := fun (a b : Nat) => wideLe (wideMul a a) (wideMul b b)
+-- crossLe (design section 4.2): e B <= dx g, with B = 2^64 - 1 and g = 2^32 + 1.
+def crossLe : (e dx : Nat) -> Flag := fun (e dx : Nat) => wideLe (wideMul e 18446744073709551615) (wideMul dx 4294967297)
+def shiftEq : (a b : Nat) -> Flag := fun (a b : Nat) => wideEq (wideMul a 4294967296) (wideOf b)
+-- Printed Wide pairs also check and lower with a neutral limb.
+def pairEq : (a b : Nat) -> Flag := fun (a b : Nat) => wideEq (pair 0 a) (wideOf b)
+def addLow : (a b : Nat) -> Nat := fun (a b : Nat) => option 2 (fun (w : Wide) => option 1 (fun (s : Nat) => s) (wideNarrow w)) (wideAdd (wideOf a) (wideOf b))
+def addSq : (a b : Nat) -> Nat := fun (a b : Nat) => option 2 (fun (w : Wide) => option 1 (fun (s : Nat) => s) (wideNarrow w)) (wideAdd (wideMul a a) (wideMul b b))
+-- addTop: 31 1190112520884487201 = 2^65 - 1 = pair 1 (2^64 - 1). At
+-- a = b = 2^64 - 1 the low sum carries into a high sum of 2^64 - 1, so the
+-- top carry comes from HS + C1, not from HP + HQ.
+def addTop : (a b : Nat) -> Nat := fun (a b : Nat) => option 2 (fun (w : Wide) => option 1 (fun (s : Nat) => s) (wideNarrow w)) (wideAdd (wideMul a b) (wideMul 31 1190112520884487201))
+-- swapLt (design section 4.2): (x + e) y' < x y + (x + e), with
+-- y' = 2^32 + 1 and y = 2^64 - 1. 2 when x + e overflows, 3 when the sum
+-- overflows, else 1 for yes and 0 for no.
+def swapLt : (x e : Nat) -> Nat := fun (x e : Nat) => option 2 (fun (s : Nat) => option 3 (fun (r : Wide) => flagIf (wideLe r (wideMul s 4294967297)) 0 1) (wideAdd (wideMul x 18446744073709551615) (wideOf s))) (natAdd x e)

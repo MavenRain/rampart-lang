@@ -1,0 +1,2 @@
+-- Wide is a kit item: a guest program cannot name it (S3).
+def f : Wide -> Wide := fun (p : Wide) => p

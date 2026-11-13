@@ -11,7 +11,7 @@
    - A word is 8 bytes. Word K of the block at address A is at A + 8K.
 
    Each entry has three i64 scratch locals after the IR locals: S and S + 1
-   hold the operands of SUB and ADD_CARRY, and S + 2 holds the
+   hold the operands of SUB, ADD_CARRY and MUL_HI, and S + 2 holds the
    address of an ALLOC. An operator reads its operands into S and S + 1 only
    after both operand expressions are done, so a nested operator cannot
    overwrite them.
@@ -135,6 +135,31 @@ static int divisor(Sink *s, uint32_t t) {
          put_byte(s, OP_I64_EQZ) && put_byte(s, OP_I64_EXTEND_I32_U) && put_byte(s, OP_I64_OR);
 }
 
+static int shr32(Sink *s) {
+  return i64_const(s, 32) && put_byte(s, OP_I64_SHR_U);
+}
+
+/* The high (HIGH) or the low 32 bits of the scratch local L. */
+static int half(Sink *s, uint32_t l, int high) {
+  return op2(s, OP_LOCAL_GET, l) &&
+         (high ? shr32(s) : i64_const(s, 0xFFFFFFFFu) && put_byte(s, OP_I64_AND));
+}
+
+/* A half of T times a half of T + 1: below 2^64, so it does not wrap. */
+static int half_mul(Sink *s, uint32_t t, int a_high, int b_high) {
+  return half(s, t, a_high) && half(s, t + 1u, b_high) && put_byte(s, OP_I64_MUL);
+}
+
+/* MUL_HI from four 32-bit partial products. With a = ah 2^32 + al and
+   b = bh 2^32 + bl: mid = (al bl >> 32) + (ah bl & (2^32 - 1)) + al bh is
+   below 2^64, and the high word is ah bh + (ah bl >> 32) + (mid >> 32). */
+static int mul_hi(Sink *s, uint32_t t) {
+  return operands(s, t) && half_mul(s, t, 1, 1) && half_mul(s, t, 1, 0) && shr32(s) && put_byte(s, OP_I64_ADD) &&
+         half_mul(s, t, 0, 0) && shr32(s) && half_mul(s, t, 1, 0) && i64_const(s, 0xFFFFFFFFu) &&
+         put_byte(s, OP_I64_AND) && put_byte(s, OP_I64_ADD) && half_mul(s, t, 0, 1) && put_byte(s, OP_I64_ADD) &&
+         shr32(s) && put_byte(s, OP_I64_ADD);
+}
+
 static int emit_op(Sink *s, IrOp op, uint32_t t) {
   switch (op) {
     case IR_OP_ADD:
@@ -156,6 +181,8 @@ static int emit_op(Sink *s, IrOp op, uint32_t t) {
       return divisor(s, t) && put_byte(s, OP_I64_DIV_U);
     case IR_OP_MOD:
       return divisor(s, t) && put_byte(s, OP_I64_REM_U);
+    case IR_OP_MUL_HI:
+      return mul_hi(s, t);
   }
   return 0;
 }

@@ -82,7 +82,16 @@ typedef enum {
      Nat is a Nat that is not 0: the type carries the fact. */
   OP_NONZERO,      /* NonZero Nat: a type */
   OP_NONZERO_OF,   /* nonZero x: some x, or none when x is 0 */
-  OP_NONZERO_VALUE /* nonZeroValue x: the base value; stuck on an open x */
+  OP_NONZERO_VALUE, /* nonZeroValue x: the base value; stuck on an open x */
+  /* S3 (Q-S0-9 (a)): Wide, a number below 2^128 in two 64-bit limbs. A
+     value of Wide is pair hi lo, with two Nat limbs. */
+  OP_WIDE,       /* Wide: a type */
+  OP_WIDE_MUL,   /* wideMul x y: the full product of two Nat */
+  OP_WIDE_OF,    /* wideOf x: pair 0 x */
+  OP_WIDE_ADD,   /* wideAdd p q: an Option Wide, none past 2^128 - 1 */
+  OP_WIDE_EQ,    /* wideEq p q: a Flag */
+  OP_WIDE_LE,    /* wideLe p q: a Flag */
+  OP_WIDE_NARROW /* wideNarrow p: some lo when hi is 0, else none */
 } Op;
 
 /* The instance of pure, map, bind and filter (formers F5 and F8). */

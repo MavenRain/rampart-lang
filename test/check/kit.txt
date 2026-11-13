@@ -85,3 +85,7 @@ partial-name.lang
 partial-option.lang
 partial-option-arg.lang
 partial-zero.lang
+wide-add-nat.lang
+wide-mul-wide.lang
+wide-narrow-nat.lang
+wide-partial.lang

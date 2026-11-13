@@ -394,6 +394,8 @@ static const char *op_word(IrOp op) {
     return "div";
   case IR_OP_MOD:
     return "mod";
+  case IR_OP_MUL_HI:
+    return "mul_hi";
   }
   return "?";
 }
@@ -643,8 +645,15 @@ static int lower_canon(Low *l, Buf *b, const Value *v, Operand *out) {
   case OP_NAT_MOD:
   case OP_NONZERO_OF:
   case OP_NONZERO_VALUE:
+  case OP_WIDE_MUL:
+  case OP_WIDE_OF:
+  case OP_WIDE_ADD:
+  case OP_WIDE_EQ:
+  case OP_WIDE_LE:
+  case OP_WIDE_NARROW:
     return closure(l);
   case OP_NONZERO:
+  case OP_WIDE:
     return give(l, out, 0);
   case OP_FM_LEN:
     return refuse(l, "len (the op count of a FreeMon trace at run time)");
@@ -707,6 +716,110 @@ static int nonzero_of(Low *l, Buf *b, const Value *v, Operand *out) {
   return lower(l, b, v->args[0], &x) && block_ops(l, &zero, 0, NULL, 0, &none) && store(l, &zero, res, none) &&
          block_ops(l, &other, 1, &x, 1, &some) && store(l, &other, res, some) &&
          if_flag(l, b, ex_bin(l, IR_OP_EQ, x.w, ex_const(l, 0)), &zero, &other);
+}
+
+/* Limb K of the Wide block X (S3): a Wide is a pair block, field 0 the
+   high limb and field 1 the low limb. An atom, so a second use does not
+   load again. */
+static const IrExpr *limb(Low *l, Buf *b, const Operand *x, uint32_t k) {
+  return atom(l, b, field_op(l, x->w, k).w);
+}
+
+/* wideMul X Y: the pair block [MUL_HI, MUL], the full product. */
+static int wide_mul(Low *l, Buf *b, const Value *v, Operand *out) {
+  Operand x;
+  Operand y;
+  Operand limbs[2];
+  if (!lower(l, b, v->args[0], &x) || !lower(l, b, v->args[1], &y))
+    return 0;
+  limbs[0] = operand(ex_bin(l, IR_OP_MUL_HI, x.w, y.w));
+  limbs[1] = operand(ex_bin(l, IR_OP_MUL, x.w, y.w));
+  return limbs[0].w != NULL && limbs[1].w != NULL && block_ops(l, b, 0, limbs, 2, out);
+}
+
+/* wideOf X: the pair block [0, X]. */
+static int wide_of(Low *l, Buf *b, const Value *v, Operand *out) {
+  Operand limbs[2];
+  limbs[0] = operand(ex_const(l, 0));
+  return limbs[0].w != NULL && lower(l, b, v->args[0], &limbs[1]) && block_ops(l, b, 0, limbs, 2, out);
+}
+
+/* wideAdd P Q: an Option block. The low sum carries C1 into the high sum
+   HS + C1. A carry out of HP + HQ or out of HS + C1 (never both) gives
+   none, else some [HS + C1, LP + LQ]. */
+static int wide_add(Low *l, Buf *b, const Value *v, Operand *out) {
+  Operand p;
+  Operand q;
+  Operand w;
+  Operand some;
+  Operand none;
+  Operand limbs[2];
+  const IrExpr *hp;
+  const IrExpr *lp;
+  const IrExpr *hq;
+  const IrExpr *lq;
+  const IrExpr *c1;
+  const IrExpr *hs;
+  Slot res = slot_new(l);
+  Buf over = buf_under(b);
+  Buf fits = buf_under(b);
+  *out = slot_get(l, res);
+  if (!lower(l, b, v->args[0], &p) || !lower(l, b, v->args[1], &q))
+    return 0;
+  hp = limb(l, b, &p, 0);
+  lp = limb(l, b, &p, 1);
+  hq = limb(l, b, &q, 0);
+  lq = limb(l, b, &q, 1);
+  c1 = atom(l, b, ex_bin(l, IR_OP_ADD_CARRY, lp, lq));
+  hs = atom(l, b, ex_bin(l, IR_OP_ADD, hp, hq));
+  limbs[0] = operand(ex_bin(l, IR_OP_ADD, hs, c1));
+  limbs[1] = operand(ex_bin(l, IR_OP_ADD, lp, lq));
+  return limbs[0].w != NULL && limbs[1].w != NULL && block_ops(l, &over, 0, NULL, 0, &none) &&
+         store(l, &over, res, none) && block_ops(l, &fits, 0, limbs, 2, &w) && block_ops(l, &fits, 1, &w, 1, &some) &&
+         store(l, &fits, res, some) &&
+         if_flag(l, b, ex_bin(l, IR_OP_ADD, ex_bin(l, IR_OP_ADD_CARRY, hp, hq), ex_bin(l, IR_OP_ADD_CARRY, hs, c1)), &over,
+                 &fits);
+}
+
+/* wideEq P Q = EQ(HP, HQ) EQ(LP, LQ). wideLe P Q = (1 - LE(HQ, HP)) +
+   EQ(HP, HQ) LE(LP, LQ): HP < HQ, or HP = HQ and LP <= LQ. */
+static int wide_test(Low *l, Buf *b, const Value *v, int le, Operand *out) {
+  Operand p;
+  Operand q;
+  const IrExpr *hp;
+  const IrExpr *lp;
+  const IrExpr *hq;
+  const IrExpr *lq;
+  if (!lower(l, b, v->args[0], &p) || !lower(l, b, v->args[1], &q))
+    return 0;
+  hp = limb(l, b, &p, 0);
+  lp = limb(l, b, &p, 1);
+  hq = limb(l, b, &q, 0);
+  lq = limb(l, b, &q, 1);
+  *out = operand(atom(l, b, le ? ex_bin(l, IR_OP_ADD, ex_bin(l, IR_OP_SUB, ex_const(l, 1), ex_bin(l, IR_OP_LE, hq, hp)),
+                                        ex_bin(l, IR_OP_MUL, ex_bin(l, IR_OP_EQ, hp, hq), ex_bin(l, IR_OP_LE, lp, lq)))
+                               : ex_bin(l, IR_OP_MUL, ex_bin(l, IR_OP_EQ, hp, hq), ex_bin(l, IR_OP_EQ, lp, lq))));
+  return out->w != NULL;
+}
+
+/* wideNarrow P: some LP when HP is 0, else none. */
+static int wide_narrow(Low *l, Buf *b, const Value *v, Operand *out) {
+  Operand p;
+  Operand lo;
+  Operand some;
+  Operand none;
+  const IrExpr *hp;
+  Slot res = slot_new(l);
+  Buf zero = buf_under(b);
+  Buf other = buf_under(b);
+  *out = slot_get(l, res);
+  if (!lower(l, b, v->args[0], &p))
+    return 0;
+  hp = limb(l, b, &p, 0);
+  lo = operand(limb(l, b, &p, 1));
+  return hp != NULL && lo.w != NULL && block_ops(l, &zero, 1, &lo, 1, &some) && store(l, &zero, res, some) &&
+         block_ops(l, &other, 0, NULL, 0, &none) && store(l, &other, res, none) &&
+         if_flag(l, b, ex_bin(l, IR_OP_EQ, hp, ex_const(l, 0)), &zero, &other);
 }
 
 /* Field K of the block X. */
@@ -1209,7 +1322,20 @@ static int lower_stuck(Low *l, Buf *b, const Value *v, Operand *out) {
     return nonzero_of(l, b, v, out);
   case OP_NONZERO_VALUE:
     return lower(l, b, v->args[0], out);
+  case OP_WIDE_MUL:
+    return wide_mul(l, b, v, out);
+  case OP_WIDE_OF:
+    return wide_of(l, b, v, out);
+  case OP_WIDE_ADD:
+    return wide_add(l, b, v, out);
+  case OP_WIDE_EQ:
+    return wide_test(l, b, v, 0, out);
+  case OP_WIDE_LE:
+    return wide_test(l, b, v, 1, out);
+  case OP_WIDE_NARROW:
+    return wide_narrow(l, b, v, out);
   case OP_NONZERO:
+  case OP_WIDE:
     return internal(l, "a stuck canonical value");
   case OP_FM_LEN:
     return refuse(l, "len (the op count of a FreeMon trace at run time)");
