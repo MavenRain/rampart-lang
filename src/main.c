@@ -7,6 +7,7 @@
 #include "front/check.h"
 #include "front/front.h"
 #include "front/lower.h"
+#include "pins.h"
 #include "target.h"
 
 #define ARENA_LIMIT_BYTES ((size_t)1 << 30)
@@ -47,6 +48,7 @@ static int usage(FILE *err) {
         "       langc [--kit] ir PROG\n"
         "       langc [--kit] abi PROG\n"
         "       langc [--kit] build PROG -o OUT [--runtime]\n"
+        "       langc pins hash|verify|bump|gate ... (langc pins for its usage)\n"
         "--kit: the kit mode, the trusted test scope of the kit gate\n", err);
   return 2;
 }
@@ -163,6 +165,8 @@ int main(int argc, char **argv) {
   Diag diag;
   diag_init(&diag);
   Options opt;
+  /* S5: the span pins take no program (src/pins.c). */
+  if (argc > 1 && strcmp(argv[1], "pins") == 0) return pins_main(argc - 1, argv + 1);
   int kit = argc > 1 && strcmp(argv[1], "--kit") == 0;
   if (!parse_options(argc - kit, argv + kit, &opt, &diag)) {
     diag_print(&diag, stderr);

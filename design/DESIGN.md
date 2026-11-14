@@ -142,16 +142,21 @@ counterexample search only. It feeds the T2 report. It is not a proof.
 
 ## 7. Span pins and the report (Q-S0-16, Q-S0-17)
 
-- `pins/spans.tsv` has one row per base name: `name path start end sha256`.
-  The hash is the sha256 of the exact bytes of the line range at the pin.
+- `pins/spans.tsv` has a `# pin <sha>` line, then one row per base name:
+  `name path start end sha256`. The hash is the sha256 of the exact bytes
+  of the line range at the pin. `langc pins hash --tn DIR` writes the rows
+  (Q-S5-3 (a)).
 - `langc pins verify --tn DIR` reads each file with
   `git -C DIR show <pin>:<path>` through `popen`. It prints SAME or CHANGED
   for each row.
-- The gate row runs when `RAMPART_TN` names a checkout that has the pin
-  object. If it does not, the row prints `pins: SKIPPED (no RAMPART_TN)`. A
-  silent pass is not allowed.
-- `langc pins bump NEWSHA` lists the CHANGED spans and finds each item again
-  by name. A human or an agent confirms each new span.
+- The gate row (`langc pins gate`) runs when `RAMPART_TN` names a checkout
+  that has the pin object. If `RAMPART_TN` is unset or empty, the row
+  prints `pins: SKIPPED (no RAMPART_TN)`. If the checkout does not have the
+  pin object, the gate fails (Q-S5-2 (a)). A silent pass is not allowed.
+- `langc pins bump NEWSHA --tn DIR` lists the CHANGED spans and finds each
+  item again by name, with the old line count. It prints FOUND, AMBIGUOUS
+  or MISSING for each name and does not change `pins/spans.tsv`. A human or
+  an agent confirms each new span (Q-S5-1 (a)).
 - The T2 JSON report gives, for each property: the name, the class, the
   verdict (PROVED, REFUTED with a trace, OPEN), the resource bound, the law
   counts by bucket, the cited spans with SAME or CHANGED, and a schema
@@ -179,7 +184,7 @@ TinyCC builds each one. Keep them separate.
 
 | Program | Job |
 |---|---|
-| `langc` | The compiler: parse, check, eval, lower, Wasm. `langc pins` (verify, bump) is a subcommand, not a fifth program. |
+| `langc` | The compiler: parse, check, eval, lower, Wasm. `langc pins` (hash, verify, bump, gate) is a subcommand, not a fifth program. |
 | `langc mcp` | An authoring MCP server over stdio for agents that WRITE rampart-lang: check, fmt, explain, list-base, show-law, show-span. |
 | `langc serve` | The same tools over HTTP behind x402, plus MCP streamable HTTP at `/mcp`. It links libcurl for the facilitator verify and settle calls. It runs behind a TLS proxy. It does not start without a USER facilitator URL and payTo address. |
 | `rampartd` | The T1 host. It runs a compiled module on an event trace and reports verdicts. |

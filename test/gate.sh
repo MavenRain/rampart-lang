@@ -346,6 +346,14 @@ build/langc --kit 2>/dev/null || status=$?
 status=0
 build/langc check "$tmp/missing.lang" 2>/dev/null || status=$?
 [ "$status" -eq 2 ] || { echo "FAIL missing file: want exit 2, got $status"; fail=$((fail + 1)); }
+
+# The span pins (S5, Q-S0-16 (a), Q-S5-2 (a)). RAMPART_TN unset or empty:
+# `pins: SKIPPED (no RAMPART_TN)`. Set: each row of pins/spans.tsv is
+# hashed at the pin; a CHANGED row or a checkout with no pin object fails.
+status=0
+pins_out=$(build/langc pins gate 2>&1) || status=$?
+echo "$pins_out"
+[ "$status" -eq 0 ] || fail=$((fail + 1))
 rm -rf "$tmp"
 
 if rg -n '\x{2013}|\x{2014}' . >/dev/null; then

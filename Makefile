@@ -7,15 +7,17 @@ CFLAGS = -std=c99 -Wall -Werror -Isrc
 CLANG_FLAGS = -std=c99 -Wall -Wextra -Wswitch-enum -Werror -fsyntax-only -Isrc
 FRONT = src/front/base.c src/front/lexer.c src/front/parser.c src/front/front.c src/front/eval.c src/front/check.c src/front/lower.c
 TARGET = src/wasm.c
-SRC = src/main.c $(FRONT) $(TARGET)
+PINS = src/pins.c src/sha256.c
+SRC = src/main.c $(FRONT) $(TARGET) $(PINS)
 FRONT_TOOL = test/fronttool.c $(filter-out src/front/front.c src/front/lower.c,$(FRONT))
 PATH_TOOL = test/pathtool.c $(filter-out src/front/front.c src/front/lower.c,$(FRONT))
 NOTRAP_TOOL = test/notraptool.c
+PIN_TOOL = test/pintool.c $(PINS)
 HEADERS = $(wildcard src/*.h src/front/*.h)
 
 .PHONY: build check check-clang clean
 
-build: build/langc build/fronttool build/pathtool build/notraptool
+build: build/langc build/fronttool build/pathtool build/notraptool build/pintool
 
 build/domain.c: domain/domain.lang gen/embed.c
 	mkdir -p build
@@ -36,17 +38,23 @@ build/notraptool: $(NOTRAP_TOOL) $(HEADERS)
 	mkdir -p build
 	$(TCC) $(CFLAGS) -o build/notraptool $(NOTRAP_TOOL)
 
+build/pintool: $(PIN_TOOL) $(HEADERS)
+	mkdir -p build
+	$(TCC) $(CFLAGS) -o build/pintool $(PIN_TOOL)
+
 check-clang: build/domain.c
 	$(CC) $(CLANG_FLAGS) $(SRC) build/domain.c
 	$(CC) $(CLANG_FLAGS) $(FRONT_TOOL)
 	$(CC) $(CLANG_FLAGS) $(PATH_TOOL)
 	$(CC) $(CLANG_FLAGS) $(NOTRAP_TOOL)
+	$(CC) $(CLANG_FLAGS) $(PIN_TOOL)
 
-check: build/langc build/fronttool build/pathtool build/notraptool check-clang
+check: build/langc build/fronttool build/pathtool build/notraptool build/pintool check-clang
 	sh test/gate.sh
 	sh test/review.sh
 	build/fronttool
 	build/pathtool
+	build/pintool
 
 clean:
 	rm -rf build

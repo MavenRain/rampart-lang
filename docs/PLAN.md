@@ -17,10 +17,11 @@ request, the route, the slices and the open questions. "design sec N" is
 section N of `design/DESIGN.md`. A reading that is not ruled stays a
 recommendation.
 
-Status: S4 DONE (2026-11-12): the state cell monad `St` and the Mealy step
-are domain defs over the kernel codata `Stream` (section 3, Q-S4-1 (a)).
-Next: S5 (span pins: `pins/spans.tsv`, `langc pins verify`, `langc pins
-bump`, the gate row, Q-S0-16).
+Status: S5 DONE (2026-11-14): span pins. `pins/spans.tsv` has the 40
+rows of section 13 and the sha256 of each span at `6167184c0`. `langc pins`
+(hash, verify, bump, gate) is in `src/pins.c` (section 1.5).
+Next: S6 (base carriers, `Params` and cited constants; confirm the section
+13 spans).
 
 ## 1. Rulings and questions
 
@@ -76,6 +77,9 @@ bump`, the gate row, Q-S0-16).
 | 2026-11-12 | Q-S1-2 (b): Same window premise inside the D3 statement, but no ASSUMED row: the scheduler gap joins law X3 (transport and runtime internals, EXTERNAL). ASSUMED stays 2. The window premise (from (a)): in each window of `w` events (`w` in `Params`), the environment delivers a step to each ready handler; the adversary keeps all other order control. | USER, S1 |
 | 2026-11-12 | Q-S1-3 (a): Only requests from honest committee peers, which have reserved capacity under law D2. Unknown and known non-committee peers have no liveness claim in v1. | USER, S1 |
 | 2026-11-12 | Q-S4-1 (a): The state cell monad is Kleisli defs in `domain/domain.lang`: `St S A := S -> Prod S A` and the Mealy step `Mealy S E O := S -> E -> Prod S O`. The kernel does not change. | USER, S4 |
+| 2026-11-13 | Q-S5-1 (a): `langc pins bump NEWSHA --tn DIR [--spans FILE]` hashes each span at NEWSHA. For each row that changed, it finds the declaration again by name in the file at NEWSHA and keeps the old line count. It prints one row for each name with FOUND, AMBIGUOUS (all lines) or MISSING. It does not change `pins/spans.tsv`. A human or an agent confirms each new span. | USER, S5 |
+| 2026-11-13 | Q-S5-2 (a): With `RAMPART_TN` unset or empty, the gate row prints `pins: SKIPPED (no RAMPART_TN)` and passes. With `RAMPART_TN` set to a checkout that does not have the pin object, the row prints `FAIL pins: RAMPART_TN has no 6167184c0` and the gate fails. | USER, S5 |
+| 2026-11-13 | Q-S5-3 (a): `langc pins hash --tn DIR [--spans FILE]` reads rows of 4 or 5 columns and prints each row with the sha256 of its span at the pin. `pins/spans.tsv` comes from this command, not from a hand edit. | USER, S5 |
 
 The seed is `bin/new-lang.sh rampart-lang tcc-wasm` from lang-template
 5265a2a. The kit gives the parser, the checker, the evaluator, the lowering
@@ -315,6 +319,28 @@ law D2 uses `k`.
   checker step rule on the `state` record.
   RULED: (a).
 
+### 1.5 Questions for the USER (S5)
+
+- Q-S5-1 The search rule of `langc pins bump`. Q-S0-16 (a) says "finds
+  each item again by name". (a) `langc pins bump NEWSHA --tn DIR [--spans
+  FILE]` hashes each span at NEWSHA. For each row that changed, it finds
+  the declaration by name in the file at NEWSHA (`struct`, `enum`,
+  `const`, `static`, `fn`; for `T::m`, `fn m` in an `impl` block that
+  names `T`) and keeps the old line count. It prints one row for each name
+  with FOUND, AMBIGUOUS (all lines) or MISSING. It does not change
+  `pins/spans.tsv`.
+  RULED: (a).
+- Q-S5-2 The gate row when `RAMPART_TN` is set but the checkout does not
+  have the pin object. (a) The row prints `FAIL pins: RAMPART_TN has no
+  6167184c0` and the gate fails. `RAMPART_TN` unset or empty gives
+  `pins: SKIPPED (no RAMPART_TN)` and passes.
+  RULED: (a).
+- Q-S5-3 How `langc` writes `pins/spans.tsv`. (a) `langc pins hash --tn
+  DIR [--spans FILE]` reads rows of 4 or 5 columns and prints each row with
+  the sha256 of its span at the pin. The 40 rows of section 13 go in as 4
+  columns.
+  RULED: (a).
+
 ## 2. The reading of R0: no runtime error
 
 R0 says that langc accepts no program that can lead to a runtime error.
@@ -507,6 +533,13 @@ valid Wasm modules 35 (34): `examples/mealy.lang`. Differential cases
 case. The other counts do not change. The kernel does not change
 (Q-S4-1 (a)).
 
+S5 gate counts (serial run, clean build, span pins, `RAMPART_TN` unset).
+New rows: `build/pintool` (`pin tests: 32 passed`) and `pins: SKIPPED (no
+RAMPART_TN)`. The other counts do not change. With `RAMPART_TN` set to a
+checkout that has the pin object, the pins row gives `pins: 40 SAME, 0
+CHANGED`. The kept log has the SKIPPED line, so it does not need a
+telcoin-network checkout.
+
 ## 11. Port sources
 
 | Source | What |
@@ -547,7 +580,8 @@ layer. Six siblings name Telcoin Network for another reason:
 ## 13. Base draft (R2, Q-S0-15)
 
 DRAFT, not ruled. Each row cites telcoin-network at `6167184c0`. S6
-confirms each span and S5 writes its hash. "Minimal" is relative to the
+confirms each span. S5 wrote the hash of each span to `pins/spans.tsv`.
+"Minimal" is relative to the
 examples of section 12.
 
 | # | Name | Kind | path:start-end | Examples | Note |
@@ -608,8 +642,8 @@ constants in the three paths (OI-12). The longest span is 94 lines
 | S2 | Port the kernel and the total Wasm writer (Q-S0-20) | DONE |
 | S3 | Total arithmetic, bounded naturals, fixed point; the trap row (Q-S0-9, Q-S0-22) | DONE |
 | S4 | R1 formers: `Stream` codata, the state cell monad, the Mealy step (Q-S0-2, Q-S4-1) | DONE |
-| S5 | Span pins: `pins/spans.tsv`, `langc pins verify`, `langc pins bump`, the gate row (Q-S0-16) | NEXT |
-| S6 | Base carriers, `Params` and cited constants; confirm the section 13 spans (Q-S0-4, Q-S0-15) | |
+| S5 | Span pins: `pins/spans.tsv`, `langc pins verify`, `langc pins bump`, the gate row (Q-S0-16) | DONE |
+| S6 | Base carriers, `Params` and cited constants; confirm the section 13 spans (Q-S0-4, Q-S0-15) | NEXT |
 | S7 | Peers: score, penalty, bans, the peer table; laws A1, E1, E2, P1 | |
 | S8 | Admission and permits: admission, source admission, serve permits, service class, sync admission; laws D1, D2, D3 | |
 | S9 | Records: kad, freshness, record exchange, retention; law E3, O1 (records) | |
@@ -641,7 +675,8 @@ constants in the three paths (OI-12). The longest span is 94 lines
 - OI-6 `doc-check.pl` was not run at S0 (pontoon S0 precedent).
 - OI-7 `langc pins verify` and the drift tool need `git` and a
   telcoin-network checkout that has the pin object. A deploy of the drift
-  tool is a USER step.
+  tool is a USER step. S5: `langc pins hash`, `verify` and `bump` take
+  `--tn DIR`. The gate row reads `RAMPART_TN` (Q-S5-2 (a)).
 - OI-8 The fixed-point scale for `peers/score.rs`. S7 picks it from the
   cited score ranges and states the rounding direction for each law.
 - OI-9 The role lattice of law P1. S7 reads it from the span. If the span
@@ -705,3 +740,18 @@ constants in the three paths (OI-12). The longest span is 94 lines
   `src/front/eval.c` (`data_field_type`: both limbs are `Nat`) and adds
   two regressions to `test/fronttool.c`. pontoon-lang 8b9111e does not
   have the fix. This repo does not change pontoon-lang.
+- OI-21 `langc pins bump` keeps the old line count (Q-S5-1 (a)). If a
+  declaration grows or shrinks at the new pin, the FOUND row has the old
+  count, so its end can be wrong. The human or the agent who confirms the
+  row sets the end.
+- OI-22 The finder of `langc pins bump` reads lines, not Rust syntax. It
+  finds `struct N`, `enum N`, `const N`, `static N` and `fn N` outside
+  each `impl` block, and for `T::m` it finds `fn m` inside an `impl` block
+  whose `impl` line names `T` as a word. An `impl` block opens at an
+  `impl` line that has no `}` and closes at a `}` line with the same
+  indent or less. Indents are spaces. It skips `//` lines. It does not see
+  a declaration that a macro makes, a `/* */` comment, or a `T` that is
+  not on the `impl` line. A name with a space (row 33
+  `RequestHandler::process_gossip (worker)`) is found by the part before
+  the space. At the pin, the finder gives FOUND for all 40 rows, each at
+  its start line.
