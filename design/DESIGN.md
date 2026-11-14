@@ -63,7 +63,9 @@ queue value. Its capacity is a cited constant.
 Logical time is the trace index. A Rust `Duration` or `Instant` (a ban
 duration, a heartbeat, a freshness window, a retention period) reads as a
 count of `Tick` events from the environment. Each duration is a tick count
-from a cited constant. The language has no wall clock.
+from a cited constant. One `Tick` has no fixed length (Q-S6-5): a
+duration of `s` seconds is `s` times the `Params` field `ticksPerSecond`.
+The language has no wall clock.
 
 ## 3. Model shape (Q-S0-2)
 
@@ -77,7 +79,8 @@ from a cited constant. The language has no wall clock.
   and the step `Mealy S E O` are defs in `domain/domain.lang`, not kernel
   formers (Q-S4-1 (a)).
 - `Verdict`, `Admit` and `Outcome` are sum types, not formers.
-- A former outside this table gives `REFUSE_FORMER`.
+- A program that declares a family, a cofamily or a law def gives
+  `REFUSE_DATA`. Only `domain/domain.lang` declares formers (Q-S6-3).
 
 ## 4. Attack classes (Q-S0-10 to Q-S0-14)
 
@@ -168,15 +171,22 @@ counterexample search only. It feeds the T2 report. It is not a proof.
   a struct, a free fn or a cited constant inside the three paths at the
   pin, (ii) it cites `path:start-end`, (iii) at least one example program
   uses it, and (iv) no admitted op is a composition of other admitted ops.
+  One exception to (i) (Q-S6-1): a config field that an admitted span
+  reads enters `Params` as a field. The field cites `path:line` of the
+  config field and its default. It has no pin row.
 - "Minimal" is relative to the example corpus. It is not a theorem. A
   minimality table lists each op with the example that needs it.
-- Foreign types in a signature (`PeerId`, `Multiaddr`, `BlsPublicKey`,
-  `Certificate`, `Batch`, `Header`, `Round`, `Epoch`, `Duration`,
-  `Instant`, channel types) are opaque carriers. A carrier has no op except
-  the decidable equality that the admitted span uses. Each carrier cites its
-  first use inside the three paths and counts as a span name.
-- `docs/PLAN.md` section 13 gives the base draft: 40 names keyed to
-  the examples E1 to E9. It is a draft for S1 and S6.
+- Foreign types in a signature (`PeerId`, `IpAddr`, `Multiaddr`,
+  `BlsPublicKey`, `Certificate`, `Batch`, `Epoch`, channel types) are
+  opaque carriers. A carrier has no op except the decidable equality that
+  the admitted span uses. Each carrier cites its first use inside the three
+  paths and counts as a span name. A Rust `Duration` or `Instant` is a tick
+  count (`Nat`, sec 2.3), not a carrier. `Header` and `Round` have no
+  section 13 row yet. S6 gives `PeerId`, `IpAddr`, `Multiaddr` and
+  `BlsPublicKey` (Q-S6-4). A later slice adds the carriers that its laws
+  use.
+- `docs/PLAN.md` section 13 gives the base: 40 names keyed to the
+  examples E1 to E9. S6 confirmed each span.
 
 ## 9. Four C programs
 

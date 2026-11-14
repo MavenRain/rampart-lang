@@ -17,11 +17,12 @@ request, the route, the slices and the open questions. "design sec N" is
 section N of `design/DESIGN.md`. A reading that is not ruled stays a
 recommendation.
 
-Status: S5 DONE (2026-11-14): span pins. `pins/spans.tsv` has the 40
-rows of section 13 and the sha256 of each span at `6167184c0`. `langc pins`
-(hash, verify, bump, gate) is in `src/pins.c` (section 1.5).
-Next: S6 (base carriers, `Params` and cited constants; confirm the section
-13 spans).
+Status: S6 DONE (2026-11-14): the base. `domain/domain.lang` keeps the
+kernel part (line 3 of the file gives its extent) and adds the carriers `PeerId`, `IpAddr`,
+`Multiaddr` and `BlsPublicKey`, 13 cited constants, the `Params` record and
+`paramsAt` (section 1.6). The 40 spans of section 13 are CONFIRMED.
+Next: S7 (peers: score, penalty, bans, the peer table; laws A1, E1, E2,
+P1).
 
 ## 1. Rulings and questions
 
@@ -341,6 +342,37 @@ law D2 uses `k`.
   columns.
   RULED: (a).
 
+### 1.6 Questions for the USER (S6)
+
+- Q-S6-1 How `Params` carries the config-fed durations (OI-12). (a) One
+  `Nat` tick-count field for each config value. A law holds for each value
+  (with a premise `> 0` where the law needs it). Each field cites its
+  config line: `ScoreConfig::banned_before_decay_secs`
+  (`crates/config/src/network.rs:964`, default `30 * 60` at line 991) and
+  `PeerConfig::excess_peers_reconnection_timeout` (line 872, default 600 s
+  at line 902). Design sec 8 rule (i) gets a narrow exception for a config
+  field that an admitted span reads. No new pin row: the pins stay 40.
+  RULED: (a).
+- Q-S6-2 The kernel prelude in `domain/domain.lang` (OI-15). (a) Keep each
+  kernel def as a marked kernel part, and append the rampart base after it.
+  The cites of `formers/tcc-wasm.md` stay valid, and no gate row changes.
+  RULED: (a).
+- Q-S6-3 `REFUSE_FORMER` (OI-19). (a) The section 7 row becomes
+  `REFUSE_DATA`, the code that the checker gives today. Ten codes stay. The
+  checker and the gate do not change.
+  RULED: (a).
+- Q-S6-4 The S6 base. (a) One `Params` record with the cited constants of
+  section 13 and the config-fed fields (`n`, `f`, `w` and `t` wait for S8,
+  OI-13). The S6 carriers are only those that the S7 laws use: `PeerId`,
+  `IpAddr`, `Multiaddr`, `BlsPublicKey`. Later slices add theirs. A Rust
+  `Duration` or `Instant` is a tick count (`Nat`, Q-S0-7), not a carrier.
+  RULED: (a).
+- Q-S6-5 The length of one `Tick` (section 5). No ruling gave it. (a) One
+  second. (b) One millisecond. (c) No fixed length: `Params` has a field
+  `ticksPerSecond` (with a premise `> 0`), and a duration of `s` seconds
+  is `s` times that field, so a law holds for each rate.
+  RULED: (c).
+
 ## 2. The reading of R0: no runtime error
 
 R0 says that langc accepts no program that can lead to a runtime error.
@@ -373,12 +405,13 @@ R1 admits only cell monads and their duals, as Cubical TT represents them
 - A model is a Mealy step `S -> Event -> S x Out`. The state is in a state
   cell monad.
 - `Verdict`, `Admit` and `Outcome` are sums, not formers.
-- A former outside this table gives `REFUSE_FORMER`.
+- A program that declares a family, a cofamily or a law def gives
+  `REFUSE_DATA`. Only `domain/domain.lang` declares formers (Q-S6-3).
 
 ## 4. The base signature (R2)
 
 R2 admits only a minimal span of structs, impls and free fns from the three
-paths (Q-S0-3). Foreign types are opaque carriers (Q-S0-4). Section 14
+paths (Q-S0-3). Foreign types are opaque carriers (Q-S0-4). Section 13
 gives the draft. A name outside the pin table gives `REFUSE_BASE`. With
 Q-S0-3 (a), a gate row in S21 fails on a name with no use in the example
 corpus, and on an op that is a composition of other admitted ops.
@@ -386,7 +419,9 @@ corpus, and on an op that is a composition of other admitted ops.
 ## 5. Time
 
 Progress is the trace index (Q-S0-7). A duration is a count of `Tick`
-events from a cited constant. There is no wall clock; a program that names
+events from a cited constant. One `Tick` has no fixed length (Q-S6-5):
+`Params` has a field `ticksPerSecond`, and a duration of `s` seconds is
+`s` times that field. There is no wall clock; a program that names
 one gives `REFUSE_CLOCK`.
 
 ## 6. Laws and obligations
@@ -411,7 +446,7 @@ Ten codes (Q-S0-24). `langc check --json` gives each with a fix hint.
 | Code | Cause |
 |---|---|
 | `REFUSE_PARTIAL` | A function that is not total. |
-| `REFUSE_FORMER` | A former outside the R1 table. |
+| `REFUSE_DATA` | A program declares a family, a cofamily or a law def; only `domain/domain.lang` declares formers (rule R1, Q-S6-3). |
 | `REFUSE_BASE` | A base name outside the pin table. |
 | `REFUSE_FOREIGN` | An op on an opaque carrier other than its equality. |
 | `REFUSE_PIN` | A base name whose pin row is CHANGED or absent. |
@@ -540,6 +575,13 @@ checkout that has the pin object, the pins row gives `pins: 40 SAME, 0
 CHANGED`. The kept log has the SKIPPED line, so it does not need a
 telcoin-network checkout.
 
+S6 gate counts (serial run, clean build, the base, `RAMPART_TN` unset).
+Evals 130 (S5: 100): thirty `test/eval/base` rows. They are the 13 cited
+constants by name, seven `paramsAt` rows (five `Params` fields) at the
+rates 1 and 1000, two `none` rows past the `Nat` range and eight carrier
+equality rows. The other counts do not change. No check row and no C code change.
+With `RAMPART_TN` set, the pins row gives `pins: 40 SAME, 0 CHANGED`.
+
 ## 11. Port sources
 
 | Source | What |
@@ -579,10 +621,10 @@ layer. Six siblings name Telcoin Network for another reason:
 
 ## 13. Base draft (R2, Q-S0-15)
 
-DRAFT, not ruled. Each row cites telcoin-network at `6167184c0`. S6
-confirms each span. S5 wrote the hash of each span to `pins/spans.tsv`.
-"Minimal" is relative to the
-examples of section 12.
+CONFIRMED in S6 (OI-10): each of the 40 spans is the declaration line to
+its closing line at the pin, so no row changed. Each row cites
+telcoin-network at `6167184c0`. S5 wrote the hash of each span to
+`pins/spans.tsv`. "Minimal" is relative to the examples of section 12.
 
 | # | Name | Kind | path:start-end | Examples | Note |
 |---|---|---|---|---|---|
@@ -629,9 +671,13 @@ examples of section 12.
 
 Coverage notes. E6 has the fewest rows (4). The gossip heartbeat is an
 inline literal at `gossip_config.rs:215`, and no mesh constant is inside
-the three paths (OI-11). Ban durations come from config, not from
-constants in the three paths (OI-12). The longest span is 94 lines
-(row 24).
+the three paths (OI-11). The ban duration and the excess-peer
+reconnection timeout come from config, not from constants in the three
+paths (OI-12, Q-S6-1). `Params` carries each as a tick-count field that
+cites its config line: `ScoreConfig::banned_before_decay_secs`
+(`crates/config/src/network.rs:964`) and
+`PeerConfig::excess_peers_reconnection_timeout` (line 872). The longest
+span is 94 lines (row 24).
 
 ## 14. Slices
 
@@ -643,8 +689,8 @@ constants in the three paths (OI-12). The longest span is 94 lines
 | S3 | Total arithmetic, bounded naturals, fixed point; the trap row (Q-S0-9, Q-S0-22) | DONE |
 | S4 | R1 formers: `Stream` codata, the state cell monad, the Mealy step (Q-S0-2, Q-S4-1) | DONE |
 | S5 | Span pins: `pins/spans.tsv`, `langc pins verify`, `langc pins bump`, the gate row (Q-S0-16) | DONE |
-| S6 | Base carriers, `Params` and cited constants; confirm the section 13 spans (Q-S0-4, Q-S0-15) | NEXT |
-| S7 | Peers: score, penalty, bans, the peer table; laws A1, E1, E2, P1 | |
+| S6 | Base carriers, `Params` and cited constants; confirm the section 13 spans (Q-S0-4, Q-S0-15) | DONE |
+| S7 | Peers: score, penalty, bans, the peer table; laws A1, E1, E2, P1 | NEXT |
 | S8 | Admission and permits: admission, source admission, serve permits, service class, sync admission; laws D1, D2, D3 | |
 | S9 | Records: kad, freshness, record exchange, retention; law E3, O1 (records) | |
 | S10 | Primary and worker network handlers and codecs; laws O1 (queues), D1 (codecs), A2 | |
@@ -681,24 +727,24 @@ constants in the three paths (OI-12). The longest span is 94 lines
   cited score ranges and states the rounding direction for each law.
 - OI-9 The role lattice of law P1. S7 reads it from the span. If the span
   gives no total order, it is a question for S7.
-- OI-10 The base draft is a draft. S6 confirms each span. Rule (iv) of
-  Q-S0-3 is checked in S21.
+- OI-10 CLOSED (S6). Each of the 40 spans of section 13 is CONFIRMED at
+  the pin, so `pins/spans.tsv` does not change. Rule (iv) of Q-S0-3 is
+  checked in S21.
 - OI-11 The gossip lead of law A2 depends on the gossipsub mesh
   parameters in the span. If they are not inside the three paths, A2 is a
   question for S10.
-- OI-12 Ban durations and the excess-peer reconnection timeout come from
-  config, not from constants in the three paths. S6 decides how `Params`
-  carries them, with a citation to the config field.
+- OI-12 CLOSED (S6, Q-S6-1 (a)). Ban durations and the excess-peer
+  reconnection timeout come from config. `Params` has one `Nat` tick-count
+  field for each, and each field cites its config line.
 - OI-13 The window `w` and the response bound `t` of law D3 (section 1.3).
   S8 reads them from the cited capacities (reserved slots, queue capacities,
   permits) and puts them in `Params`. If the span gives no bound, it is a
   question for S8.
 - OI-14 The kernel family `Word` is `SwapWord` in the ported kernel. The
   name `Word` is free for the domain words.
-- OI-15 The kernel test data stays until the domain slices: the kernel
-  prelude in `domain/domain.lang`, the IR test families and the kernel
-  examples. S6 replaces the domain file and keeps each gate row that the
-  kernel needs.
+- OI-15 CLOSED (S6, Q-S6-2 (a)). Kept: each def has a gate row.
+  Line 3 of `domain/domain.lang` marks the kernel part, and the base is
+  after that part.
 - OI-16 Some ported comments keep the slice tags of the source repos
   (for example S3, S3c and S5 in `domain/README.md`, `examples/` and
   `test/pathtool.c`). These tags name slices of the source repos, not
@@ -731,11 +777,9 @@ constants in the three paths (OI-12). The longest span is 94 lines
      pair after it found the two field types. The refusal is now first.
   4. In `src/ir.h`, one comment line was longer than the other lines.
 
-- OI-19 `REFUSE_FORMER` (section 7, design sec 3) has no checker code. A
-  guest family or cofamily gives `REFUSE_DATA` (rule R1), so no guest
-  program can name a former outside the R1 table today. The domain slices
-  (S6 and later) must give `REFUSE_FORMER` or remove the code from
-  section 7.
+- OI-19 CLOSED (S6, Q-S6-3 (a)). `REFUSE_FORMER` had no checker code. The
+  section 7 row and design sec 3 now give `REFUSE_DATA`, the code that the
+  checker gives to a guest family, cofamily or law def (rule R1).
 - OI-20 The USER S3 commit 38c7cc1 fixes `Wide` under `hcomp` in
   `src/front/eval.c` (`data_field_type`: both limbs are `Nat`) and adds
   two regressions to `test/fronttool.c`. pontoon-lang 8b9111e does not
@@ -755,3 +799,34 @@ constants in the three paths (OI-12). The longest span is 94 lines
   `RequestHandler::process_gossip (worker)`) is found by the part before
   the space. At the pin, the finder gives FOUND for all 40 rows, each at
   its start line.
+- OI-23 `test/check/domain-name.lang` (one def `total : Nat := 1`) has no
+  row in `test/check/expect.txt`. A later slice gives it a row or deletes
+  it.
+- OI-24 The O1 rows 11, 14 and 15 (peer tables and caches) belong to S9 or
+  S10. S9 decides.
+- OI-25 The rows 24 to 26 (`crates/consensus/primary/src/network/mod.rs`)
+  belong to S8 or S10. S8 decides.
+- OI-26 The S8 parts "admission" and "service class" and the S9 part
+  "retention" have no section 13 row, but design sec 1 lists `admission/`
+  and `retention.rs`. S8 and S9 add the rows (a pin bump) or give the
+  reason that they do not.
+- OI-27 Row 32 is the sum of two constants: `GOSSIP_FRAME_BOUND` (16387)
+  and `GOSSIP_READ_CHUNK` (8192). S10 decides if `GOSSIP_READ_CHUNK` gets
+  its own row.
+- OI-28 The gossip heartbeat of law A2 is an inline literal, and the span
+  has no mesh constant (OI-11). S10.
+- OI-29 Design sec 4 gives one example program for each class, but E3
+  serves both D2 and D3. S8 decides.
+- OI-30 The S7 laws use rows of the S8 and S10 themes (16, 17, 19, 20,
+  21, 34, 35). S7 states which slice owns each of these rows.
+- OI-31 For S8: `HoldBudget` (row 21) works in nanoseconds. Its `leak` fn
+  (`crates/network-libp2p/src/sync/admission.rs:257-259`) divides whole
+  nanoseconds. The law of row 21 needs a premise on `ticksPerSecond` that
+  makes each of its durations a whole count of ticks.
+- OI-32 For S7: no section 13 span names `Multiaddr`. Its cite is
+  `crates/network-libp2p/src/peers/all_peers.rs:250`, the first use after
+  the import in the file of row 7. S7 confirms that E1 and E2 need
+  `Multiaddr`, or removes it (R2).
+- OI-33 For S9: `futureSkewSecs` (row 39, a `TimestampSec` skew) stays in
+  seconds. `paramsAt` does not scale it by `ticksPerSecond`. The S9
+  freshness law states the link between this skew and a tick count.

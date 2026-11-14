@@ -1,6 +1,6 @@
 -- The domain file. The kernel port (S2, from pontoon-lang a82331d and
 -- barter-lang a8f0f52) removes the kit sample and adds the kernel prelude.
--- The rampart-lang domain words come in a later slice (S6).
+-- Lines 1..355 are the kernel part (S6, OI-15); the rampart base follows them.
 -- Each family, constructor, field and def name here becomes a core name
 -- (rule R4). Only this file can declare a family (rule R1).
 
@@ -353,3 +353,85 @@ family Signal := sigQuiet | sigLoud (loudLevel : Nat)
 and Window := winOpen | winShut (shutFor : Nat)
 family Hop := hopEnd | hopNext (nextEcho : Echo)
 and Echo := echoBack (backHop : Hop)
+
+-- The rampart base (S6). Each cite is telcoin-network at 6167184c0 (PLAN
+-- section 13). The kernel part above does not change (Q-S6-2).
+-- Carriers (Q-S6-4, DESIGN section 8): a foreign type is opaque, so each
+-- carrier is one constructor over a Nat key. The equality def of a carrier
+-- gives inl unit when the two keys are equal and inr unit when they are
+-- not. No axiom. The cite is the first line that names the type in the
+-- lowest section 13 row.
+-- PeerId (libp2p): crates/network-libp2p/src/peers/all_peers.rs:311 (row 7).
+family PeerId := peerIdOf (peerIdKey : Nat)
+def peerIdEq : PeerId -> PeerId -> Sum Unit Unit :=
+  fun (a : PeerId) => fun (b : PeerId) => flagIf (natEq (peerIdKey a) (peerIdKey b)) (inl unit) (inr unit)
+-- IpAddr (std): crates/network-libp2p/src/peers/banned.rs:126 (row 9).
+family IpAddr := ipAddrOf (ipAddrKey : Nat)
+def ipAddrEq : IpAddr -> IpAddr -> Sum Unit Unit :=
+  fun (a : IpAddr) => fun (b : IpAddr) => flagIf (natEq (ipAddrKey a) (ipAddrKey b)) (inl unit) (inr unit)
+-- Multiaddr (libp2p): no section 13 span names it; the first use after the
+-- import in the row 7 file is crates/network-libp2p/src/peers/all_peers.rs:250.
+family Multiaddr := multiaddrOf (multiaddrKey : Nat)
+def multiaddrEq : Multiaddr -> Multiaddr -> Sum Unit Unit :=
+  fun (a : Multiaddr) => fun (b : Multiaddr) => flagIf (natEq (multiaddrKey a) (multiaddrKey b)) (inl unit) (inr unit)
+-- BlsPublicKey (tn-types): crates/network-libp2p/src/peers/manager.rs:1823 (row 8).
+family BlsPublicKey := blsKeyOf (blsKeyKey : Nat)
+def blsKeyEq : BlsPublicKey -> BlsPublicKey -> Sum Unit Unit :=
+  fun (a : BlsPublicKey) => fun (b : BlsPublicKey) => flagIf (natEq (blsKeyKey a) (blsKeyKey b)) (inl unit) (inr unit)
+
+-- Constants: one def for each const row of section 13, in Rust units.
+-- Row 10, crates/network-libp2p/src/peers/banned.rs:21 (banned peers).
+def bannedPeersPerIpThreshold : Nat := 1
+-- Row 15, crates/network-libp2p/src/peers/types.rs:155 (entries).
+def maxPeerExchangeEntries : Nat := 128
+-- Row 17, crates/network-libp2p/src/consensus.rs:255 (connections).
+def maxEstablishedConnections : Nat := 128
+-- Row 18, crates/network-libp2p/src/consensus.rs:267 (connections).
+def privilegedEstablishedConnectionReserve : Nat := 50
+-- Row 19, crates/network-libp2p/src/consensus.rs:276 (connections).
+def maxEstablishedConnectionsPerPublicPeer : Nat := 2
+-- Row 23, crates/network-libp2p/src/serve_permits.rs:64 (permits).
+def maxPermitsPerPeer : Nat := 2
+-- Row 25, crates/consensus/primary/src/network/mod.rs:78 (streams).
+def maxConcurrentEpochStreams : Nat := 5
+-- Row 26, crates/consensus/primary/src/network/mod.rs:89 (streams).
+def committeeReservedSyncStreams : Nat := 1
+-- Row 27, crates/consensus/worker/src/network/mod.rs:91 (digests).
+def maxBatchDigestsPerRequest : Nat := 500
+-- Row 30, crates/consensus/primary/src/network/mod.rs:322 (bytes, 4 * 1024 * 1024).
+def maxSyncRequestFrameSize : Nat := 4194304
+-- Row 32, crates/network-libp2p/src/gossip_config.rs:79 (bytes): GOSSIP_FRAME_BOUND
+-- 16387 (gossip_config.rs:65-68) plus GOSSIP_READ_CHUNK 8192 (gossip_config.rs:52).
+def gossipMaxTransmitSize : Nat := 24579
+-- Row 37, crates/network-libp2p/src/peers/manager.rs:128 (records).
+def kadMaxStoredRecords : Nat := 1024
+-- Row 39, crates/network-libp2p/src/freshness.rs:13 (seconds, TimestampSec).
+def futureSkewSecs : Nat := 300
+
+-- Params (Q-S6-1, Q-S6-4, Q-S6-5): one record. A field for each constant
+-- above, in the same order and units, then three more fields:
+--   ticksPerSecondOf: the tick rate. No tick length is fixed, so each law
+--     holds for each rate, with the premise ticksPerSecondOf > 0 (Q-S6-5).
+--   banTicksOf: ScoreConfig::banned_before_decay_secs in ticks;
+--     crates/config/src/network.rs:964, default 30 * 60 s at :991 (OI-12).
+--   reconnectTicksOf: PeerConfig::excess_peers_reconnection_timeout in
+--     ticks; crates/config/src/network.rs:872, default 600 s at :902 (OI-12).
+-- The n, f, w and t values wait for S8 (OI-13).
+family Params := paramsOf (bannedPerIpOf : Nat) (peerExchangeOf : Nat) (establishedOf : Nat)
+  (privilegedReserveOf : Nat) (perPublicPeerOf : Nat) (permitsPerPeerOf : Nat) (epochStreamsOf : Nat)
+  (committeeStreamsOf : Nat) (batchDigestsOf : Nat) (syncFrameOf : Nat) (gossipTransmitOf : Nat)
+  (kadRecordsOf : Nat) (futureSkewSecsOf : Nat) (ticksPerSecondOf : Nat) (banTicksOf : Nat) (reconnectTicksOf : Nat)
+-- paramsAt rate banSecs reconnectSecs: the record at the tick rate rate,
+-- with the two config values in seconds. A duration of s seconds is
+-- s * rate ticks. wideMul of two Nat values always fits and wideNarrow
+-- gives none past the Nat range, so the builder gives none when a duration
+-- in ticks is past the range (R0: no run-time error).
+def paramsAt : (rate : Nat) -> (banSecs : Nat) -> (reconnectSecs : Nat) -> Option Params :=
+  fun (rate : Nat) => fun (banSecs : Nat) => fun (reconnectSecs : Nat) =>
+    bind (wideNarrow (wideMul banSecs rate)) (fun (banTicks : Nat) =>
+      bind (wideNarrow (wideMul reconnectSecs rate)) (fun (reconnectTicks : Nat) =>
+        some (paramsOf bannedPeersPerIpThreshold maxPeerExchangeEntries maxEstablishedConnections
+          privilegedEstablishedConnectionReserve maxEstablishedConnectionsPerPublicPeer maxPermitsPerPeer
+          maxConcurrentEpochStreams committeeReservedSyncStreams maxBatchDigestsPerRequest
+          maxSyncRequestFrameSize gossipMaxTransmitSize kadMaxStoredRecords futureSkewSecs
+          rate banTicks reconnectTicks)))

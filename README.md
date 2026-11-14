@@ -8,8 +8,9 @@ paths. Each base name cites a file and a line range, and a gate row hashes
 each cited span. The checker refuses any program that can have a runtime
 error. It comes from lang-template with the tcc-wasm host.
 
-Status: S5 DONE (the kernel, the total Wasm writer, `Wide`, the trap row,
-the state cell monad, the Mealy step and the span pins).
+Status: S6 DONE (the kernel, the total Wasm writer, `Wide`, the trap row,
+the state cell monad, the Mealy step, the span pins and the base carriers
+with the cited constants).
 The plan is `docs/PLAN.md`.
 
 ## When to reach for rampart-lang (DRAFT)

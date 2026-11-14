@@ -1,0 +1,20 @@
+-- Eval rows for the rampart base (S6, test/eval/expect.txt). Each entry
+-- gives one field of paramsAt as a number, or none past the Nat range.
+def banTicksAt : (rate : Nat) -> (banSecs : Nat) -> (reconnectSecs : Nat) -> Option Nat :=
+  fun (rate : Nat) => fun (banSecs : Nat) => fun (reconnectSecs : Nat) => map (fun (p : Params) => banTicksOf p) (paramsAt rate banSecs reconnectSecs)
+def reconnectTicksAt : (rate : Nat) -> (banSecs : Nat) -> (reconnectSecs : Nat) -> Option Nat :=
+  fun (rate : Nat) => fun (banSecs : Nat) => fun (reconnectSecs : Nat) => map (fun (p : Params) => reconnectTicksOf p) (paramsAt rate banSecs reconnectSecs)
+def rateAt : (rate : Nat) -> (banSecs : Nat) -> (reconnectSecs : Nat) -> Option Nat :=
+  fun (rate : Nat) => fun (banSecs : Nat) => fun (reconnectSecs : Nat) => map (fun (p : Params) => ticksPerSecondOf p) (paramsAt rate banSecs reconnectSecs)
+def gossipTransmitAt : (rate : Nat) -> (banSecs : Nat) -> (reconnectSecs : Nat) -> Option Nat :=
+  fun (rate : Nat) => fun (banSecs : Nat) => fun (reconnectSecs : Nat) => map (fun (p : Params) => gossipTransmitOf p) (paramsAt rate banSecs reconnectSecs)
+def futureSkewAt : (rate : Nat) -> (banSecs : Nat) -> (reconnectSecs : Nat) -> Option Nat :=
+  fun (rate : Nat) => fun (banSecs : Nat) => fun (reconnectSecs : Nat) => map (fun (p : Params) => futureSkewSecsOf p) (paramsAt rate banSecs reconnectSecs)
+def peerSame : Sum Unit Unit := peerIdEq (peerIdOf 7) (peerIdOf 7)
+def peerOther : Sum Unit Unit := peerIdEq (peerIdOf 7) (peerIdOf 8)
+def ipSame : Sum Unit Unit := ipAddrEq (ipAddrOf 7) (ipAddrOf 7)
+def ipOther : Sum Unit Unit := ipAddrEq (ipAddrOf 7) (ipAddrOf 8)
+def addrSame : Sum Unit Unit := multiaddrEq (multiaddrOf 7) (multiaddrOf 7)
+def addrOther : Sum Unit Unit := multiaddrEq (multiaddrOf 7) (multiaddrOf 8)
+def blsSame : Sum Unit Unit := blsKeyEq (blsKeyOf 7) (blsKeyOf 7)
+def blsOther : Sum Unit Unit := blsKeyEq (blsKeyOf 7) (blsKeyOf 8)
